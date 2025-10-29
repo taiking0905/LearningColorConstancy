@@ -18,6 +18,7 @@ img_path = "C:/Users/taiki/Desktop/8D5U5524_masked.png"
 # img_path = 'C:/Users/taiki/Desktop/test/IMG_4017.png'
 # img_path = 'C:/Users/taiki/Desktop/test/IMG_4020.png'
 # img_path = 'C:/Users/taiki/Desktop/test/DSC01628.png'
+img_path = "E:/ColorConstancy/test.png"
 img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED).astype(np.float32)
 print("読み込み確認:", img.shape, img.dtype, img.min(), img.max())
 img = img - BLACK_LEVEL
@@ -27,8 +28,6 @@ img_display = to_8bit_gamma(img)
 img_rgb_display = cv2.cvtColor(img_display, cv2.COLOR_BGR2RGB)
 
 # matplotlib で表示
-plt.figure(figsize=(8,6))
 plt.imshow(img_rgb_display)
 plt.axis('off')
-plt.title("Gamma corrected")
 plt.show()

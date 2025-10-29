@@ -8,3 +8,4 @@ rawpy
 pandas
 dotenv
 watchdog
+discord.py
