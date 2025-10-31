@@ -8,6 +8,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import signal
+import sys
 
 # OneDriveフォルダー設定
 load_dotenv()
@@ -25,14 +26,17 @@ WHITE_LEVEL = 4095
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# ========= Discord送信系 =========
 async def send_error_to_discord(error_message: str):
+    """Bot起動前エラー防止＆fetch_channel使用"""
+    if not bot.is_ready():
+        print("⚠️ Bot未起動のためDiscord送信をスキップ")
+        print(f"エラー内容: {error_message}")
+        return
+
     try:
-        # fetch_channel を使って確実に取得
         channel = await bot.fetch_channel(DISCORD_CHANNEL_ID)
-        if channel:
-            await channel.send(f"❌ エラー発生:\n```\n{error_message}\n```")
-        else:
-            print("⚠️ Discordチャンネルが見つかりません。IDを確認してください。")
+        await channel.send(f"❌ エラー発生:\n```\n{error_message}\n```")
     except Exception as e:
         print(f"⚠️ Discord送信エラー: {e}")
         print(f"エラー内容: {error_message}")
@@ -108,17 +112,22 @@ async def process_dng_async(dng_path):
         await send_error_to_discord(f"{dng_path} 処理中に例外発生:\n{tb}")
 
 async def watch_folder(folder_path):
-    processed_files = set(os.listdir(folder_path)) 
+    processed_files = set(os.listdir(folder_path))
     print(f"監視開始: {folder_path}（既存 {len(processed_files)} 件をスキップ）")
+
     while True:
         try:
             current_files = set(f for f in os.listdir(folder_path) if f.lower().endswith(".dng"))
             new_files = current_files - processed_files
 
-            for file in new_files:
-                file_path = os.path.join(folder_path, file)
-                print(f"新規ファイル検出: {file_path}")
-                asyncio.create_task(process_dng_async(file_path))
+            # ⚙️ gatherで例外を確実に捕捉
+            tasks = [asyncio.create_task(process_dng_async(os.path.join(folder_path, f))) for f in new_files]
+            if tasks:
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for r in results:
+                    if isinstance(r, Exception):
+                        tb = "".join(traceback.format_exception(None, r, r.__traceback__))
+                        await send_error_to_discord(f"非同期処理中に例外発生:\n{tb}")
 
             processed_files.update(new_files)
             await asyncio.sleep(1)
@@ -132,22 +141,17 @@ async def watch_folder(folder_path):
 
 # ========= Discord 通知 =========
 async def send_to_discord(message: str):
-    """共通のDiscord送信関数"""
-    channel = bot.get_channel(DISCORD_CHANNEL_ID)
-    if channel:
+    """通常送信もfetch_channelを使用"""
+    if not bot.is_ready():
+        print("⚠️ Bot未起動のためDiscord送信をスキップ")
+        return
+
+    try:
+        channel = await bot.fetch_channel(DISCORD_CHANNEL_ID)
         await channel.send(message)
-    else:
-        print("⚠️ Discordチャンネルが見つかりません。IDを確認してください。")
-
-# ========= Botイベント =========
-@bot.event
-async def on_ready():
-    print(f"Bot 起動: {bot.user}")
-    await asyncio.sleep(1)
-    await send_to_discord(f"🚀 Bot 起動完了: **{bot.user}** がオンラインになりました！")
-
-    asyncio.create_task(watch_folder(OneDrive_DATA_PATH))
-
+    except Exception as e:
+        print(f"⚠️ Discord送信失敗: {e}")
+        print(f"送信しようとしたメッセージ: {message}")
 
 # ========= 終了処理 =========
 async def shutdown():
@@ -156,5 +160,29 @@ async def shutdown():
     await bot.close()
     print("✅ Bot終了完了")
 
+
+# ========= Signal対応 =========
+def setup_signal_handlers(loop):
+    """SIGINT, SIGTERMで安全にシャットダウン"""
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
+
+
+# ========= Botイベント =========
+@bot.event
+async def on_ready():
+    print(f"Bot 起動: {bot.user}")
+    await asyncio.sleep(1)
+    await send_to_discord(f"🚀 Bot 起動完了: **{bot.user}** がオンラインになりました！")
+
+    # フォルダ監視タスク起動
+    asyncio.create_task(watch_folder(OneDrive_DATA_PATH))
+
+
+# ========= メイン起動 =========
 if __name__ == "__main__":
-    bot.run(DISCORD_TOKEN)
+    try:
+        bot.run(DISCORD_TOKEN)
+    except KeyboardInterrupt:
+        print("💡 KeyboardInterruptを検知、終了します。")
+        asyncio.run(shutdown())
