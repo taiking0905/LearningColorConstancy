@@ -1,61 +1,56 @@
 import os
 import glob
 import shutil
+import logging
 
 from config import setup_directories
 from CreateHistogram import CreateHistogram, CreateHistogram_rg_gb
 from MaskProcessing import MaskProcessing
 from AnalayzeWhite import analyze_white_patch
 
-       
+def process_image(image_path: str, dirs: dict):
+    # 画像ファイル名から拡張子を除去して、マスクと教師データのパスを設定
+    filename = os.path.splitext(os.path.basename(image_path))[0]
+
+    paths = {
+        "masked": os.path.join(dirs["MASK"], f"{filename}_masked.png"),
+        "checker": os.path.join(dirs["COLORCHECKER"], f"{filename}_checker.png"),
+        "end": os.path.join(dirs["END"], f"{filename}.png"),
+    }
+    
+    # 1. マスク処理
+    result = MaskProcessing(image_path, paths["masked"], paths["checker"])
+    if result.get("quit"):
+        logging.info("Processing stopped by user.")
+        return False
+    
+    # 2. 白色パッチ解析
+    analyze_white_patch(paths["checker"], dirs["REAL_RGB_JSON"])
+
+    # 3. ヒストグラム生成
+    CreateHistogram(paths["masked"], dirs["HIST"])
+    CreateHistogram_rg_gb(paths["masked"], dirs["HIST_RG_GB"])
+
+    # 4. 元画像をENDへ移動
+    shutil.move(image_path, paths["end"])
+    logging.info(f"Moved {image_path} → {paths['end']}")
+    return True
+
 def pretreatment():
+    """入力ディレクトリ内の画像に対して一括前処理を実行"""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     # ディレクトリ設定
     dirs = setup_directories()
 
     # png画像のパスを取得
     image_paths = sorted(glob.glob(os.path.join(dirs["INPUT"], "*.png")))
 
-    
     for image_path in image_paths:
         try:
-            # 画像ファイル名から拡張子を除去して、マスクと教師データのパスを設定
-            filename = os.path.splitext(os.path.basename(image_path))[0]
-            # マスク処理した画像の名前を設定
-            image_masked_path = os.path.join(dirs["MASK"], f"{filename}_masked.png")
-            image_checker_path = os.path.join(dirs["COLORCHECKER"], f"{filename}_checker.png")
-            # マスク処理を実行 result=action
-            result = MaskProcessing(image_path, image_masked_path,image_checker_path)
-
-            if result["quit"]:
-                print("Processing stopped by user.")
+            if not process_image(image_path, dirs):
                 break
-
-            analyze_white_patch(image_checker_path, dirs["REAL_RGB_JSON"])
-
-            # 教師データの画像の名前を設定
-            # image_corrected_path = os.path.join(dirs["TEACHER"], f"{filename}_corrected.png")
-            # データ作成 エラーが出るなら止める
-    
-            # image_masked_path(マスク処理された画像)を使い,ヒストグラム(CSV)を作成,histpreディレクトリに保存
-            CreateHistogram(image_masked_path, dirs["HIST"])
-            CreateHistogram_rg_gb(image_masked_path, dirs["HIST_RG_GB"])
-
-            # filename + ".png"= real_rgb_jsonの時のデータと image_masked_path(マスク処理された画像)を使い,結果はヒストグラム(CSV)を作成,teacherhistディレクトリに保存
-            # 教師データの処理を実行、学習に使わないので、ここではコメントアウト
-            # TeacherProcessing(filename , dirs["REAL_RGB_JSON"], image_masked_path, image_corrected_path)
-
-            #image_corrected_path(マスク処理された教師データの画像)を使い,ヒストグラム(CSV)を作成,teacherhistディレクトリに保存
-            # 教師用のヒストグラムを作成するが、学習には使わないので、ここではコメントアウト
-            # CreateHistogram(image_corrected_path, dirs["TEACHER_HIST"])
-
-            # ここで画像を END ディレクトリに移動 本番では使用する
-            # 使い終わった画像を END ディレクトリに移動
-            dst_path = os.path.join(dirs["END"], os.path.basename(image_path))
-            shutil.move(image_path, dst_path)
-            print(f"Moved {image_path} → {dst_path}")
-
         except Exception as e:
-            print(f"処理中にエラーが発生しました: {e}")
+            logging.exception(f"Error while processing {image_path}: {e}")
 
 # 実行
 if __name__ == "__main__":
