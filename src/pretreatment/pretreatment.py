@@ -4,7 +4,8 @@ import shutil
 import logging
 
 from config import setup_directories
-from CreateHistogram import CreateHistogram, CreateHistogram_rg_gb
+from CreateHistogram import CreateHistogram
+from CreateHistogram_rg_gb import CreateHistogram_rg_gb
 from MaskProcessing import MaskProcessing
 from AnalayzeWhite import analyze_white_patch
 
