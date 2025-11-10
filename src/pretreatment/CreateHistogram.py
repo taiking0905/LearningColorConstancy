@@ -4,8 +4,8 @@ import numpy as np
 import os
 import pandas as pd
 
-from config import move_figure, to_8bit_gamma
-from utils.load_and_normalize_image import load_and_normalize_image
+from config import move_figure
+from pretreatment.utils.image_util import load_image, normalize_image, to_8bit_gamma
 
 # =======================================
 # 定数設定
@@ -116,10 +116,16 @@ def CreateHistogram(image_path, output_path):
     # ======================
     # 画像の読み込み・正規化
     # ======================
-    filename, img, rgb_ratio, _, valid_mask = load_and_normalize_image(image_path)
 
-    # ガンマ補正・8bit変換（表示用）
+    # 画像読み込み
+    filename, img = load_image(image_path)
+
+    # 正規化
+    rgb_ratio, _, valid_mask = normalize_image(img)
+
+    # 表示用画像
     display_img = to_8bit_gamma(img)
+
 
     # 全ピクセルが有効である範囲のマスクを作成（単純に非黒領域）
     mask = cv2.inRange(display_img, (1, 1, 1), (255, 255, 255))

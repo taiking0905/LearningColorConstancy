@@ -3,10 +3,9 @@ from matplotlib.colors import LogNorm
 import cv2
 import numpy as np
 import os
-import pandas as pd
 
-from config import move_figure, to_8bit_gamma
-from utils.load_and_normalize_image import load_and_normalize_image
+from config import move_figure
+from pretreatment.utils.image_util import load_image, normalize_image
 
 # =======================================
 # 定数設定
@@ -74,7 +73,9 @@ def plot_2d_histogram(hist, title, xlabel, ylabel, filename, cmap='viridis', log
     return fig
 
 def CreateHistogram_rg_gb(image_path, output_path):
-    filename, _, _, rgb_normalized , valid_mask=load_and_normalize_image(image_path)
+
+    filename, img = load_image(image_path)
+    _, rgb_normalized , valid_mask = normalize_image(img)
 
     # ==============================
     # 2D ヒストグラム（rg空間 &gb空間）

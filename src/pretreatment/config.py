@@ -102,17 +102,3 @@ def move_figure(fig, x: int, y: int):
         fig.canvas.manager.window.SetPosition((x, y))
     elif backend in ['Qt4Agg', 'Qt5Agg', 'QtAgg']:
         fig.canvas.manager.window.move(x, y)
-
-
-def to_8bit_gamma(img, gamma=3):
-    """
-    12bitまたは16bit画像を8bitに変換して、ガンマ補正も適用（表示用）
-    """
-    # 正規化（0〜1）
-    img = np.clip((img)/ (WHITE_LEVEL - BLACK_LEVEL), 0, 1)
-
-    # ガンマ補正（sRGB風）
-    img_gamma = np.power(img, 1 / gamma)
-
-    # 8bit化
-    return (img_gamma * 255).astype(np.uint8)

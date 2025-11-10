@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import os
 import json
 
-from config import move_figure, to_8bit_gamma
+from config import move_figure
+from pretreatment.utils.image_util import to_8bit_gamma
 
 
 def save_color_to_json(filename, mean_color, json_path):

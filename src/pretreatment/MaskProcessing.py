@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import cv2
 import numpy as np
 
-from config import to_8bit_gamma, move_figure, BLACK_LEVEL
-
+from config import move_figure, BLACK_LEVEL
+from pretreatment.utils.image_util import to_8bit_gamma
 # マスク処理を行う関数
 def MaskProcessing(image_path, output_path, checker_path):
     coords = [] # クリックした座標を保存するリスト
