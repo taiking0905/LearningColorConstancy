@@ -15,30 +15,6 @@ bin_width = 0.02
 # 0〜1をbin_widthで分割したときのビン数
 num_bins = int(1.0 / bin_width)
 
-
-# =======================================
-# 2Dヒストグラム（presence mask）をフラット化してCSVに保存
-# =======================================
-def save_flat_mask(presence_mask, filename, output_path):
-    """
-    2D presence mask（rg平面上のピクセル分布）を
-    1次元ベクトルに変換し、CSVとして保存する。
-    """
-    flat_mask = []
-    for g in range(num_bins):
-        for r in range(num_bins):
-            # r+g <= 1 の範囲（有効領域）のみを対象とする
-            if (r * bin_width + g * bin_width) <= 1.0:
-                flat_mask.append(presence_mask[g, r])
-
-    flat_mask = np.array(flat_mask).astype(int)
-
-    # 1行に展開してCSV出力（header/indexなし）
-    pd.DataFrame([flat_mask]).to_csv(
-        os.path.join(output_path, f"{filename}.csv"), index=False, header=False
-    )
-
-
 # =======================================
 # RGBヒストグラムを作成
 # =======================================
@@ -107,6 +83,27 @@ def create_2d_histogram(rgb_ratio, valid_mask, filename):
     fig.colorbar(im, ax=ax, label='Pixel Exists (True/False)')
     return fig, presence_mask
 
+# =======================================
+# 2Dヒストグラム（presence mask）をフラット化してCSVに保存
+# =======================================
+def save_flat_mask(presence_mask, filename, output_path):
+    """
+    2D presence mask（rg平面上のピクセル分布）を
+    1次元ベクトルに変換し、CSVとして保存する。
+    """
+    flat_mask = []
+    for g in range(num_bins):
+        for r in range(num_bins):
+            # r+g <= 1 の範囲（有効領域）のみを対象とする
+            if (r * bin_width + g * bin_width) <= 1.0:
+                flat_mask.append(presence_mask[g, r])
+
+    flat_mask = np.array(flat_mask).astype(int)
+
+    # 1行に展開してCSV出力（header/indexなし）
+    pd.DataFrame([flat_mask]).to_csv(
+        os.path.join(output_path, f"{filename}.csv"), index=False, header=False
+    )
 
 # =======================================
 # メイン関数：画像からヒストグラムを生成・表示・保存
