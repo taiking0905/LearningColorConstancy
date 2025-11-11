@@ -5,7 +5,7 @@ import os
 import pandas as pd
 
 from config import move_figure
-from pretreatment.utils.image_util import load_image, normalize_image, to_8bit_gamma
+from image_util import load_image, normalize_image, to_8bit_gamma
 
 # =======================================
 # 定数設定
@@ -112,6 +112,12 @@ def CreateHistogram(image_path, output_path):
     """
     画像を読み込み、RGBヒストグラム・rg空間ヒストグラムを作成・表示し、
     rgマスクをCSVに保存する。
+
+    Parameters:
+        image_path : str
+            入力画像のパス
+        output_path : str
+            csv出力フォルダのパス
     """
     # ======================
     # 画像の読み込み・正規化

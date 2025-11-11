@@ -6,8 +6,7 @@ import os
 import json
 
 from config import move_figure
-from pretreatment.utils.image_util import to_8bit_gamma
-
+from image_util import to_8bit_gamma
 
 def save_color_to_json(filename, mean_color, json_path):
     # 画像ファイル名から拡張子と "_masked" を取り除く

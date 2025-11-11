@@ -1,7 +1,7 @@
 import os 
 import cv2
 import numpy as np
-from config import to_8bit_gamma
+
 from config import BLACK_LEVEL, WHITE_LEVEL
 
 # def load_and_normalize_image(image_path):
