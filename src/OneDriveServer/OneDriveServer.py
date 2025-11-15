@@ -82,6 +82,29 @@ def almost_raw_from_rawpy(dng_path):
         rgb_image[..., 1] = G.astype(np.uint16)
         rgb_image[..., 2] = B.astype(np.uint16)
 
+        threshold = 3300
+        max_ratio = 0.03  # 3%
+
+        exceed_ratio = np.sum(rgb_image >= threshold) / rgb_image.size
+
+        if exceed_ratio > max_ratio:
+            # 保存せずスキップ
+            asyncio.create_task(send_to_discord(
+                f"⚠️ 白飛び検出: {os.path.basename(dng_path)}\n"
+                f"白飛び割合: {exceed_ratio*100:.2f}% (> {max_ratio*100:.0f}%)\n"
+                f"自動的に処理をスキップしました。"
+            ))
+            print(f"⚠️ 白飛びのため保存せずスキップ: {dng_path}")
+            return  # 処理終了
+        
+        if exceed_ratio > max_ratio/3:
+            asyncio.create_task(send_to_discord(
+                f"⚠️ 白飛び検出: {os.path.basename(dng_path)}\n"
+                f"白飛び割合: {exceed_ratio*100:.2f}% (> {max_ratio*100:.0f}%)\n"
+                f"⚠️ 画像は白飛びしていますが、処理は続行します。"
+            ))
+            print(f"⚠️ 白飛びですが処理続行: {dng_path}")
+
         # 保存フォルダ作成
         os.makedirs(OneDrive_RAW_PNG_PATH, exist_ok=True)
         os.makedirs(OneDrive_GAMMA_PNG_PATH, exist_ok=True)

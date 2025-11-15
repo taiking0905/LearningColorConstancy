@@ -62,7 +62,8 @@ def setup_directories():
         # "TEACHER": BASE_PATH / "teacher",
         # "TEACHER_HIST": BASE_PATH / "teacherhist",
         "REAL_RGB_JSON": BASE_PATH / "real_rgb.json",
-        "END": BASE_PATH / "enddatasets"
+        "END": BASE_PATH / "enddatasets",
+        "TEST": BASE_PATH / "test"
     }
 
     # ディレクトリ作成（JSONファイルは除外）
