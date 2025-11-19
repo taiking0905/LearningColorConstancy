@@ -25,7 +25,7 @@ def get_base_dir():
         drive = find_drive_with_folder("ColorConstancy")
         if not drive:
             raise RuntimeError("ドライブが見つかりません")
-        _base_dir = Path(drive) / "ColorConstancy/LCC-v5"
+        _base_dir = Path(drive) / "ColorConstancy/LCC-test"
     return _base_dir
 
 BASE_DIR = get_base_dir()
@@ -34,6 +34,7 @@ TRAIN_DIR = BASE_DIR / "train"
 VAL_DIR = BASE_DIR / "val"
 REAL_RGB_JSON_PATH = (BASE_DIR / "..") / "real_rgb.json"
 TEST_DIR = BASE_DIR / "test"
+DATASETS_DIR = (BASE_DIR / "..") / "histogram_rg_gb/Gehler'sRawDataset"
 IPHONE_TEST_DIR = BASE_DIR / "iphone_test"
 OUTPUT_DIR = LCC_DIR / "outputs"
 # -------------------------------
