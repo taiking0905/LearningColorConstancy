@@ -48,11 +48,6 @@ X_train = X_train_A + X_train_B
 X_val   = X_val_A   + X_val_B
 X_test  = X_test_A  + X_test_B
 
-# ラベル作成
-y_train = ["A"]*len(X_train_A) + ["B"]*len(X_train_B)
-y_val   = ["A"]*len(X_val_A)   + ["B"]*len(X_val_B)
-y_test  = ["A"]*len(X_test_A)  + ["B"]*len(X_test_B)
-
 # =======================================
 # フォルダ作成
 # =======================================
