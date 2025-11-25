@@ -9,7 +9,8 @@ import os
 # -------------------------------
 # パス設定
 # -------------------------------
-_base_dir = None
+_base_dir_original = None
+_base_dir_mine = None
 
 def find_drive_with_folder(folder_name="ColorConstancy"):
     for part in psutil.disk_partitions():
@@ -20,31 +21,20 @@ def find_drive_with_folder(folder_name="ColorConstancy"):
     return None
 
 def get_base_dir():
-    global _base_dir
-    if _base_dir is None:
+    global _base_dir_original, _base_dir_mine
+    if _base_dir_original is None or _base_dir_mine is None:
         drive = find_drive_with_folder("ColorConstancy")
         if not drive:
             raise RuntimeError("ドライブが見つかりません")
-        _base_dir = Path(drive) / "ColorConstancy/LCC-v5"
-    return _base_dir
+        _base_dir_original = Path(drive) / "ColorConstancy/LCC-v5"
+        _base_dir_mine = Path(drive) / "ColorConstancy/TransferDataset"
+    return _base_dir_original, _base_dir_mine 
 
-BASE_DIR = get_base_dir()
+BASE_DIR_ORGINAL, BASE_DIR_MINE = get_base_dir()
 LCC_DIR = Path(__file__).resolve().parent
-TRAIN_DIR = BASE_DIR / "train"
-VAL_DIR = BASE_DIR / "val"
-REAL_RGB_JSON_PATH = (BASE_DIR / "..") / "real_rgb.json"
-TEST_DIR = BASE_DIR / "test"
-DATASETS_DIR = (BASE_DIR / "..") / "histogram_rg_gb/"
-IPHONE_TEST_DIR = BASE_DIR / "iphone_test"
-OUTPUT_DIR = LCC_DIR / "outputs"
-# -------------------------------
-# ハイパーパラメータ
-# -------------------------------
-EPOCHS = 1000
-BATCH_SIZE = 16
-LEARNING_RATE =  3e-4
-WEIGHT = 5e-5
-DROPOUT = 0.6
+DATASETS_DIR = (BASE_DIR_ORGINAL / "..") / "histogram_rg_gb/"
+
+
 
 # -------------------------------
 # 設定パラメータ
@@ -74,5 +64,3 @@ def set_seed(seed=SEED):
     # 追加: 完全な再現性のための設定
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
-

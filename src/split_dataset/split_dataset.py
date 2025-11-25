@@ -1,8 +1,12 @@
 import os
 import shutil
 from sklearn.model_selection import train_test_split
-from config import DATASETS_DIR, TRAIN_DIR, VAL_DIR, TEST_DIR, SEED
+from config import DATASETS_DIR, BASE_DIR_ORGINAL, SEED
 
+TRAIN_DIR = BASE_DIR_ORGINAL / "train"
+VAL_DIR   = BASE_DIR_ORGINAL / "val"
+TEST_DIR  = BASE_DIR_ORGINAL / "test"
+GEHLER_DATASETS_DIR = DATASETS_DIR  / "Gehler'sRawDataset"
 # =======================================
 # サイズ設定
 # =======================================
@@ -13,9 +17,9 @@ TEST_RATIO  = 0.15
 # =======================================
 # 画像ファイル取得とラベル分け
 # =======================================
-all_files = [f for f in os.listdir(DATASETS_DIR) if f.lower().endswith('.npy')]
-paths_A = [os.path.join(DATASETS_DIR, f) for f in all_files if f.startswith("8D5U")]
-paths_B = [os.path.join(DATASETS_DIR, f) for f in all_files if f.startswith("IMG")]
+all_files = [f for f in os.listdir(GEHLER_DATASETS_DIR) if f.lower().endswith('.npy')]
+paths_A = [os.path.join(GEHLER_DATASETS_DIR, f) for f in all_files if f.startswith("8D5U")]
+paths_B = [os.path.join(GEHLER_DATASETS_DIR, f) for f in all_files if f.startswith("IMG")]
 
 print("A 枚数:", len(paths_A), "B 枚数:", len(paths_B))
 
