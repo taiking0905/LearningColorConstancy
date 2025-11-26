@@ -62,6 +62,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn):
     model.train()
     total_loss = 0.0
     optimizer.zero_grad()
+    batch_losses = []
 
     for X_batch, y_batch in loader:
         X_batch = X_batch.to(DEVICE)
@@ -69,6 +70,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn):
 
         pred = model(X_batch)
         loss = loss_fn(pred, y_batch)
+        batch_losses.append(loss.item())
 
         optimizer.zero_grad()
         loss.backward()
@@ -77,7 +79,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn):
         total_loss += loss.item()
 
     average_loss = total_loss / len(loader)
-    return average_loss
+    return average_loss, batch_losses
 
 
 
@@ -87,6 +89,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn):
 def evaluate(model, loader, loss_fn):
     model.eval()  
     total_loss = 0.0
+    batch_losses = []
 
     with torch.no_grad():  # 勾配を計算しない（推論のみで高速・省メモリ）
 
@@ -97,6 +100,7 @@ def evaluate(model, loader, loss_fn):
             pred = model(X_batch)               # モデル出力
             loss = loss_fn(pred, y_batch)       # 損失を計算
             total_loss += loss.item()
+            batch_losses.append(loss.item())
 
     average_loss = total_loss / len(loader)     # 全体の平均損失
-    return average_loss
+    return average_loss, batch_losses

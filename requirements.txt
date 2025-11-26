@@ -10,3 +10,4 @@ dotenv
 watchdog
 discord.py
 scikit-learn
+tensorboard

@@ -3,12 +3,15 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import time 
 import numpy as np
+import io
+from PIL import Image
+import logging
+from torch.utils.tensorboard import SummaryWriter
 
 from load_dataset import load_dataset
 from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, train_one_epoch, evaluate
 from config import get_base_dir, TRAIN_DIR, VAL_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed
-
 
 def main():
     set_seed(SEED) 
@@ -17,6 +20,14 @@ def main():
     print("Base dir:", base_dir)
     print(torch.cuda.is_available())  # TrueならOK
     print(torch.cuda.get_device_name())  # GPU名が出る
+
+    logging.basicConfig(
+    filename=OUTPUT_DIR / 'training.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    writer = SummaryWriter(OUTPUT_DIR / 'tb_logs')
+
     
     # 1. データ読み込み
     X_train, y_train_df = load_dataset(TRAIN_DIR, REAL_RGB_JSON_PATH)
@@ -41,10 +52,14 @@ def main():
 
     # 5. モデル定義
     model = ResNetModel().to(DEVICE)
+
+    dummy_input = torch.randn(1, 1, 224, 224).to(DEVICE)
+    writer.add_graph(model, dummy_input)
     try:
         model = torch.compile(model, backend="eager")
     except Exception as e:
         print(f"torch.compile failed: {e}")
+    
     # Adamオプティマイザで学習
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT)
 
@@ -61,15 +76,21 @@ def main():
 
     # Epochループ
     for epoch in range(EPOCHS):
-        print(f"\n==== Epoch {epoch+1}/{EPOCHS} ====")
+        logging.info(f"==== Epoch {epoch+1}/{EPOCHS} ====")
         epoch_start_time = time.time()
 
-        train_loss = train_one_epoch(model, train_loader, optimizer, loss_fn)
-        val_loss = evaluate(model, val_loader, loss_fn)
+        train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer, loss_fn)
+        val_loss, val_batch_losses = evaluate(model, val_loader, loss_fn)
         
         epoch_end_time = time.time()
-        print(f"Total epoch time: {epoch_end_time - epoch_start_time:.2f} sec")
-        print(f"Loss: Train = {train_loss:.4f}, Val = {val_loss:.4f}")
+        logging.info(f"Total epoch time: {epoch_end_time - epoch_start_time:.2f} sec")
+        logging.info(f"Loss: Train = {train_loss:.4f}, Val = {val_loss:.4f}")
+
+        # TensorBoard に記録
+        writer.add_scalar('Loss/train', train_loss, epoch+1)
+        writer.add_scalar('Loss/val', val_loss, epoch+1)
+        writer.add_histogram("AngularError/train", np.array(train_batch_losses), epoch+1)
+        writer.add_histogram("AngularError/val", np.array(val_batch_losses), epoch+1)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
@@ -93,7 +114,7 @@ def main():
     plt.savefig(OUTPUT_DIR / 'loss_curve.png')
     plt.show()
 
-
+    writer.close()
 
 if __name__ == "__main__":
     main()
