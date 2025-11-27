@@ -74,16 +74,12 @@ def main():
     print("DEVICE:", DEVICE)
 
     # 1. データ読み込み
-    X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
+    X_test, y_test_df = load_dataset(IPHONE_TEST_DIR, REAL_RGB_JSON_PATH)
     y_test = y_test_df[["R", "G" , "B"]].values
     val_dataset = HistogramDataset(X_test, y_test, rng=np.random.default_rng(SEED))
 
     # 2. モデルロード
     model = ResNetModel().to(DEVICE)
-    try:
-        model = torch.compile(model, backend="eager")
-    except Exception as e:
-        print(f"torch.compile failed: {e}")
     model.load_state_dict(torch.load(OUTPUT_DIR / 'resnet_model.pth'))
     model.eval()
 

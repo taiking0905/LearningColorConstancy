@@ -34,14 +34,14 @@ TRAIN_DIR = BASE_DIR / "train"
 VAL_DIR = BASE_DIR / "val"
 REAL_RGB_JSON_PATH = (BASE_DIR / "..") / "real_rgb.json"
 TEST_DIR = BASE_DIR / "test"
-IPHONE_TEST_DIR = BASE_DIR / "iphone_test"
+PRE_TEST_DIR = BASE_DIR / "pretest"
 OUTPUT_DIR = LCC_DIR / "outputs"
 # -------------------------------
 # ハイパーパラメータ
 # -------------------------------
-EPOCHS = 1000
+EPOCHS = 20
 BATCH_SIZE = 16
-LEARNING_RATE =  3e-4
+LEARNING_RATE =  1e-3
 WEIGHT = 5e-5
 DROPOUT = 0.6
 

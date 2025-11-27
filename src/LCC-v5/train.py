@@ -55,11 +55,6 @@ def main():
 
     dummy_input = torch.randn(1, 1, 224, 224).to(DEVICE)
     writer.add_graph(model, dummy_input)
-    try:
-        model = torch.compile(model, backend="eager")
-    except Exception as e:
-        print(f"torch.compile failed: {e}")
-    
     # Adamオプティマイザで学習
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT)
 

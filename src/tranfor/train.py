@@ -52,16 +52,21 @@ def main():
 
     # 5. モデル定義
     model = ResNetModel().to(DEVICE)
+    model.load_state_dict(torch.load("./outputs/resnet_model.pth"))
+
+    # 全層を凍結
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # FC 層だけ勾配ON
+    for param in model.model.fc.parameters():
+        param.requires_grad = True
 
     dummy_input = torch.randn(1, 1, 224, 224).to(DEVICE)
     writer.add_graph(model, dummy_input)
-    try:
-        model = torch.compile(model, backend="eager")
-    except Exception as e:
-        print(f"torch.compile failed: {e}")
-    
+
     # Adamオプティマイザで学習
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT)
+    optimizer = torch.optim.Adam(model.model.fc.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT)
 
 
     # 損失関数はRGBベクトル間の角度誤差
@@ -97,7 +102,7 @@ def main():
 
 
     # 7. モデル保存
-    torch.save(model.state_dict(), OUTPUT_DIR / 'resnet_model.pth')
+    torch.save(model.state_dict(), OUTPUT_DIR / 'resnet_model_transfor.pth')
 
     all_end_time = time.time()
 

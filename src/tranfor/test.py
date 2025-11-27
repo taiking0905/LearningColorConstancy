@@ -7,7 +7,7 @@ from scipy.stats import trim_mean
 from load_dataset import load_dataset
 from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, evaluate
-from config import get_base_dir, TEST_DIR, IPHONE_TEST_DIR, REAL_RGB_JSON_PATH, OUTPUT_DIR, BATCH_SIZE, SEED, DEVICE, set_seed
+from config import get_base_dir, TEST_DIR, PRE_TEST_DIR, REAL_RGB_JSON_PATH, OUTPUT_DIR, BATCH_SIZE, SEED, DEVICE, set_seed
 
 def compute_angular_errors(y_pred_all, y_true_all):
     y_pred_norm = y_pred_all / np.linalg.norm(y_pred_all, axis=1, keepdims=True)
@@ -74,17 +74,13 @@ def main():
     print("DEVICE:", DEVICE)
 
     # 1. データ読み込み
-    X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
+    X_test, y_test_df = load_dataset(PRE_TEST_DIR, REAL_RGB_JSON_PATH)
     y_test = y_test_df[["R", "G" , "B"]].values
     val_dataset = HistogramDataset(X_test, y_test, rng=np.random.default_rng(SEED))
 
     # 2. モデルロード
     model = ResNetModel().to(DEVICE)
-    try:
-        model = torch.compile(model, backend="eager")
-    except Exception as e:
-        print(f"torch.compile failed: {e}")
-    model.load_state_dict(torch.load(OUTPUT_DIR / 'resnet_model.pth'))
+    model.load_state_dict(torch.load(OUTPUT_DIR / 'resnet_model_transfor.pth'))
     model.eval()
 
     # 3. 評価
