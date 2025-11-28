@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from load_dataset import load_dataset
 from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, train_one_epoch, evaluate
-from config import get_base_dir, TRAIN_DIR, VAL_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed
+from config import get_base_dir, TRAIN_DIR, VAL_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, START_EPOCH_2
 
 def main():
     set_seed(SEED) 
@@ -52,24 +52,38 @@ def main():
 
     # 5. モデル定義
     model = ResNetModel().to(DEVICE)
+    model.load_state_dict(torch.load(OUTPUT_DIR / 'best_model_phase1.pth'))
+    logging.info("Loaded best_model_phase1.pth for Phase 2 starting.")
 
     dummy_input = torch.randn(1, 1, 224, 224).to(DEVICE)
     writer.add_graph(model, dummy_input)
-    # Adamオプティマイザで学習
-    optimizer = torch.optim.Adam([
-    # 1. 中間層 (layer1〜layer4) のパラメータ: ImageNetの知識を保護するため、極めて低い学習率
-    # 学習率を 3e-4 の 1/1000 (3e-7) に設定
-    {'params': list(model.model.layer1.parameters()) + 
-               list(model.model.layer2.parameters()) + 
-               list(model.model.layer3.parameters()) + 
-               list(model.model.layer4.parameters()), 
-     'lr': LEARNING_RATE * 0.001},  # 3e-7
-               
-    # 2. conv1 と fc 層のパラメータ: タスク固有層は通常の学習率 (3e-4) で学習
-    {'params': model.model.conv1.parameters(), 'lr': LEARNING_RATE}, # 3e-4
-    {'params': model.model.fc.parameters(), 'lr': LEARNING_RATE},   # 3e-4
+
+    # for name, param in model.named_parameters():
+    #     # 'layer1'から'layer4'の勾配計算を無効化（フリーズ）
+    #     # ResNetの中間層の重みを保護する
+    #     if 'layer' in name:
+    #         param.requires_grad = False
+    #     # 'conv1'と'fc'層（タスク固有層）は学習させる
+    #     else:
+    #         param.requires_grad = True
     
-], weight_decay=WEIGHT)
+    # 2. 全ての層をアンフリーズ
+    for param in model.parameters():
+        param.requires_grad = True
+    logging.info("All layers unfrozen (requires_grad = True).")
+
+    # Adamオプティマイザで学習
+    # optimizer = torch.optim.Adam(
+    #     filter(lambda p: p.requires_grad, model.parameters()), 
+    #     lr=LEARNING_RATE,  # 3e-4
+    #     weight_decay=WEIGHT # 1e-4
+    # )
+    # Adamオプティマイザで学習
+    optimizer = torch.optim.Adam(
+        model.parameters(), # 💡 修正: 全てのパラメータを直接渡す
+        lr=LEARNING_RATE,
+        weight_decay=WEIGHT 
+    )
     # 損失関数はRGBベクトル間の角度誤差
     loss_fn = angular_loss
 
@@ -82,7 +96,7 @@ def main():
     all_start_time =time.time()
 
     # Epochループ
-    for epoch in range(EPOCHS):
+    for epoch in range(START_EPOCH_2, EPOCHS):
         logging.info(f"==== Epoch {epoch+1}/{EPOCHS} ====")
         epoch_start_time = time.time()
 
