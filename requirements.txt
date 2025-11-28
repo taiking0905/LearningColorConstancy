@@ -4,11 +4,10 @@ opencv-python
 pillow
 scipy
 pyqt5
-torch
 rawpy
 pandas
---extra-index-url https://download.pytorch.org/whl/cu128
-
-torch==2.3.0+cu128
-torchvision==0.18.0+cu128
-torchaudio==2.3.0+cu128
+dotenv
+watchdog
+discord.py
+scikit-learn
+tensorboard

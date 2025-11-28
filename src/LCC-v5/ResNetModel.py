@@ -1,42 +1,50 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet18
+from torchvision.models import resnet18, ResNet18_Weights
 
 from config import DROPOUT, OUTPUT_DIM, DEVICE
 
-# ResNet18をベースにしたカラー推定モデル（入力: 1ch, 出力: RGBベクトル）
+# ResNet18をベースにしたカラー推定モデル
 class ResNetModel(nn.Module):
-    def __init__(self, output_dim = OUTPUT_DIM, dropout_rate = DROPOUT):
+    def __init__(self, output_dim=OUTPUT_DIM, dropout_rate=DROPOUT):
         super().__init__()
-        model = resnet18(weights=None)
+        
+        # 💡 修正点 1: ImageNetの学習済み重みでモデルを初期化
+        # weights=ResNet18_Weights.IMAGENET1K_V1 を指定することで転移学習を実行
+        model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
 
-        # 入力チャンネルを1ch（グレースケールやヒストグラム画像）に変更
+        # 💡 修正点 2: 最初の層を置き換える (1ch入力への適応)
+        # in_channelsが1chに変わると、元の重み（3ch用）は利用できなくなるため、
+        # conv1の重みはランダム初期化（またはKaiming初期化など）に置き換えられる
         model.conv1 = nn.Conv2d(
-            in_channels=1,       # 入力は1チャネル
-            out_channels=64,     # 出力は64チャネル（ResNet標準）
+            in_channels=1,
+            out_channels=64,
             kernel_size=7,
             stride=2,
             padding=3,
             bias=False
         )
         
-        # Dropout層を中間に挿入（例: layer3 の後に）
+        # Dropout層を中間に挿入（元のコードを踏襲）
         model.layer3 = nn.Sequential(
             model.layer3,
-            nn.Dropout(p=dropout_rate)  # 👈 中間Dropout追加！
+            nn.Dropout(p=dropout_rate)
         )
 
-        # 最後のfc層にもDropout
+        # 💡 修正点 3: 最後のfc層を置き換える (3次元出力への適応)
+        # 全結合層の重みも、ImageNetの1000クラス分類の重みから、
+        # 照明推定の3次元出力に合わせた新しい重み（ランダム初期化）に置き換えられる
         in_features = model.fc.in_features
         model.fc = nn.Sequential(
             nn.Dropout(p=dropout_rate),
             nn.Linear(in_features, output_dim)
         )
+        
         self.model = model
         
     def forward(self, x):
-        return self.model(x)  # 順伝播（出力は shape: [batch_size, 3]）
+        return self.model(x)
 
 
 # 🔺角度ベースの損失関数（色ベクトルの方向を比較）
@@ -62,6 +70,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn):
     model.train()
     total_loss = 0.0
     optimizer.zero_grad()
+    batch_losses = []
 
     for X_batch, y_batch in loader:
         X_batch = X_batch.to(DEVICE)
@@ -69,6 +78,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn):
 
         pred = model(X_batch)
         loss = loss_fn(pred, y_batch)
+        batch_losses.append(loss.item())
 
         optimizer.zero_grad()
         loss.backward()
@@ -77,16 +87,13 @@ def train_one_epoch(model, loader, optimizer, loss_fn):
         total_loss += loss.item()
 
     average_loss = total_loss / len(loader)
-    return average_loss
-
-
-
-
+    return average_loss, batch_losses
 
 # 🔍 評価関数（検証・テスト用）
 def evaluate(model, loader, loss_fn):
     model.eval()  
     total_loss = 0.0
+    batch_losses = []
 
     with torch.no_grad():  # 勾配を計算しない（推論のみで高速・省メモリ）
 
@@ -97,6 +104,7 @@ def evaluate(model, loader, loss_fn):
             pred = model(X_batch)               # モデル出力
             loss = loss_fn(pred, y_batch)       # 損失を計算
             total_loss += loss.item()
+            batch_losses.append(loss.item())
 
     average_loss = total_loss / len(loader)     # 全体の平均損失
-    return average_loss
+    return average_loss, batch_losses

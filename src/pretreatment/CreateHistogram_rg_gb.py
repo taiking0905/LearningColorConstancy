@@ -1,0 +1,202 @@
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
+import cv2
+import numpy as np
+import os
+
+from config import move_figure
+from image_util import load_image, normalize_image
+
+# =======================================
+# 定数設定
+# =======================================
+# rg平面のビン幅（R/(R+G+B), G/(R+G+B)を区切る幅）
+bin_width = 0.02
+# 0〜1をbin_widthで分割したときのビン数
+num_bins = int(1.0 / bin_width)
+# CNN入力用のリサイズ後のサイズ（224x224）
+size = 224
+
+
+# =======================================
+# 2次元ヒストグラムを計算
+# =======================================
+def compute_2d_histograms(rgb_normalized, valid_mask):
+    """
+    R,G,B値を正規化した画像から、(r,g) および (g,b) 空間の2次元ヒストグラムを作成する。
+    各画素の R/(R+G+B) および G/(R+G+B) などの比率に基づき、binごとの出現回数をカウント。
+
+    Parameters:
+        rgb_normalized : np.ndarray
+            正規化済みRGB画像 (float, 0〜1)
+        valid_mask : np.ndarray
+            有効画素(True/False)を示すマスク
+
+    Returns:
+        hist_rg, hist_gb : np.ndarray
+            rg空間とgb空間のヒストグラム
+    """
+    # チャンネルごとに分離
+    r, g, b = rgb_normalized[..., 0], rgb_normalized[..., 1], rgb_normalized[..., 2]
+    num_bins = int(1.0 / bin_width)
+
+    # 各画素をビンインデックスに変換（0〜num_bins-1）
+    r_bins = np.clip((r[valid_mask] / bin_width).astype(int), 0, num_bins - 1)
+    g_bins = np.clip((g[valid_mask] / bin_width).astype(int), 0, num_bins - 1)
+    b_bins = np.clip((b[valid_mask] / bin_width).astype(int), 0, num_bins - 1)
+
+    # ヒストグラム用の空配列を初期化
+    hist_rg = np.zeros((num_bins, num_bins), dtype=np.uint32)
+    hist_gb = np.zeros((num_bins, num_bins), dtype=np.uint32)
+
+    # (r,g) 組と (g,b) 組でカウント
+    for r_bin, g_bin in zip(r_bins, g_bins):
+        hist_rg[g_bin, r_bin] += 1
+    for g_bin, b_bin in zip(g_bins, b_bins):
+        hist_gb[b_bin, g_bin] += 1
+
+    return hist_rg, hist_gb
+
+
+# =======================================
+# ヒストグラムを0〜1に正規化
+# =======================================
+def normalize_histogram(hist):
+    """
+    ヒストグラムの最大値で割って0〜1にスケーリング。
+    全要素が0の場合はそのまま返す。
+    """
+    if hist.max() > 0:
+        return (hist / hist.max()).astype(np.float32)
+    else:
+        return hist.astype(np.float32)
+
+
+# =======================================
+# rgとgbヒストグラムを1枚の画像として合成
+# =======================================
+def combine_rg_gb_histograms(presence_rg, presence_gb):
+    """
+    rgとgbのヒストグラム画像を組み合わせて224x224の画像を作成する。
+
+    - 上三角領域（x+y <= size）はrgを配置
+    - 下三角領域はgb（回転して整列）を配置
+    """
+    UINT8_MAX = 255  # 8bit画像の最大値
+
+    # ヒストグラムをリサイズ
+    # INTER_LINEARよりもINTER_NEARESTのほうがいいかも。検討場所
+    rg_upsampled = cv2.resize(presence_rg, (size, size), interpolation=cv2.INTER_LINEAR)
+    gb_upsampled = cv2.resize(presence_gb, (size, size), interpolation=cv2.INTER_LINEAR)
+
+    # 0〜255へスケーリング
+    rg_8bit = (rg_upsampled * UINT8_MAX).astype(np.uint8)
+    gb_rotated = np.rot90((gb_upsampled * UINT8_MAX).astype(np.uint8), 2)  # 180°回転
+
+    # 結合用配列を作成
+    combined = np.zeros((size, size), dtype=np.float32)
+
+    # 対角線を境にrgとgbを配置
+    for y in range(size):
+        for x in range(size):
+            if x + y <= size:
+                combined[y, x] = rg_8bit[y, x]
+            else:
+                combined[y, x] = gb_rotated[y, x]
+
+    # CNN入力想定: チャンネル次元を追加 (1ch)
+    return combined, np.stack([combined], axis=0)
+
+
+# =======================================
+# 2Dヒストグラムを可視化・保存
+# =======================================
+def plot_2d_histogram(hist, title, xlabel, ylabel, filename, cmap='viridis', logscale=True):
+    """
+    2Dヒストグラムをプロットする関数。
+    対数スケール(LogNorm)にも対応。
+    """
+    fig = plt.figure(figsize=(6,6))
+    ax = fig.add_subplot(1,1,1)
+
+    # 対数スケール指定
+    norm = LogNorm(vmin=1, vmax=255) if logscale else None
+
+    # imshowでヒートマップ描画
+    im = ax.imshow(hist.T, origin='lower', cmap=cmap,
+                   extent=[0,1,0,1], aspect='auto', norm=norm)
+
+    ax.set_title(f"{title}: {filename}")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, alpha=0.3)
+
+    # カラーバー表示
+    fig.colorbar(im, ax=ax, label='Pixel Count' if logscale else 'Value')
+    return fig
+
+
+# =======================================
+# メイン処理関数
+# =======================================
+def CreateHistogram_rg_gb(image_path, output_path):
+    """
+    画像を読み込み、rg・gb平面の2Dヒストグラムを生成・保存・可視化する。
+
+    Parameters:
+        image_path : str
+            入力画像のパス
+        output_path : str
+            npy出力フォルダのパス
+    """
+
+    # 画像読み込み
+    filename, img = load_image(image_path)
+    # 正規化と有効マスク生成
+    _, rgb_normalized , valid_mask = normalize_image(img)
+
+    # ==============================
+    # 2D ヒストグラム（rg空間 & gb空間）
+    # ==============================
+    hist_rg_2d, hist_gb_2d = compute_2d_histograms(rgb_normalized, valid_mask)
+
+    # 0〜1正規化（※要確認: hist_rgをhist_gbにしていた点はミスかも）
+    presence_rg = normalize_histogram(hist_gb_2d)
+    presence_gb = normalize_histogram(hist_gb_2d)
+
+    # rgとgbを結合した224x224画像を作成
+    combined, stacked = combine_rg_gb_histograms(presence_rg, presence_gb)
+
+    # Numpy形式で保存
+    np.save(os.path.join(output_path, f"{filename}.npy"), stacked)
+    print(f"Saved upsampled 224x224x2 histogram to: {filename}.npy")
+
+    # ==============================
+    # プロット（可視化）
+    # ==============================
+    fig1 = plot_2d_histogram(hist_rg_2d, "2D Hist (rg count)", 'r = R/(R+G+B)', 'g = G/(R+G+B)', filename)
+    fig2 = plot_2d_histogram(hist_gb_2d, "2D Hist (gb count)", 'g = G/(R+G+B)', 'b = B/(R+G+B)', filename)
+    fig3 = plot_2d_histogram(combined, "RG & GB Combined Histogram", '', '', filename, logscale=True)
+
+    # ==============================
+    # 複数ウィンドウの位置調整
+    # ==============================
+    move_figure(fig1, 0, 20)        # 左端
+    move_figure(fig2, 30, 20)       # 中央寄り
+    move_figure(fig3, 60, 20)       # 右端
+
+    # ==============================
+    # スペースキーで全ウィンドウを閉じる
+    # ==============================
+    def on_key(event):
+        if event.key == ' ':
+            for f in [fig1, fig2, fig3]:
+                plt.close(f)
+
+    for f in [fig1, fig2, fig3]:
+        f.canvas.mpl_connect("key_press_event", on_key)
+
+    # ======================
+    # 表示ブロック（終了待ち）
+    # ======================
+    plt.show(block=True)
