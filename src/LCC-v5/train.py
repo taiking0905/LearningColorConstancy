@@ -56,9 +56,20 @@ def main():
     dummy_input = torch.randn(1, 1, 224, 224).to(DEVICE)
     writer.add_graph(model, dummy_input)
     # Adamオプティマイザで学習
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT)
-
-
+    optimizer = torch.optim.Adam([
+    # 1. 中間層 (layer1〜layer4) のパラメータ: ImageNetの知識を保護するため、極めて低い学習率
+    # 学習率を 3e-4 の 1/1000 (3e-7) に設定
+    {'params': list(model.model.layer1.parameters()) + 
+               list(model.model.layer2.parameters()) + 
+               list(model.model.layer3.parameters()) + 
+               list(model.model.layer4.parameters()), 
+     'lr': LEARNING_RATE * 0.001},  # 3e-7
+               
+    # 2. conv1 と fc 層のパラメータ: タスク固有層は通常の学習率 (3e-4) で学習
+    {'params': model.model.conv1.parameters(), 'lr': LEARNING_RATE}, # 3e-4
+    {'params': model.model.fc.parameters(), 'lr': LEARNING_RATE},   # 3e-4
+    
+], weight_decay=WEIGHT)
     # 損失関数はRGBベクトル間の角度誤差
     loss_fn = angular_loss
 
@@ -67,6 +78,7 @@ def main():
     train_losses = []
     val_losses = []
 
+    best_val_loss = float('inf')
     all_start_time =time.time()
 
     # Epochループ
@@ -81,6 +93,15 @@ def main():
         logging.info(f"Total epoch time: {epoch_end_time - epoch_start_time:.2f} sec")
         logging.info(f"Loss: Train = {train_loss:.4f}, Val = {val_loss:.4f}")
 
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            
+            # 検証損失が最小を更新した場合のみモデルを保存
+            # ファイル名を 'best_resnet_model.pth' にして、最終保存と区別
+            torch.save(model.state_dict(), OUTPUT_DIR / 'best_resnet_model.pth')
+            logging.info(f"*** NEW BEST MODEL SAVED! Val Loss: {best_val_loss:.4f} ***")
+
+
         # TensorBoard に記録
         writer.add_scalar('Loss/train', train_loss, epoch+1)
         writer.add_scalar('Loss/val', val_loss, epoch+1)
@@ -89,10 +110,6 @@ def main():
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
-
-
-    # 7. モデル保存
-    torch.save(model.state_dict(), OUTPUT_DIR / 'resnet_model_temp.pth')
 
     all_end_time = time.time()
 
