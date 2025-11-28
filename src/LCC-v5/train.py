@@ -92,7 +92,7 @@ def main():
 
 
     # 7. モデル保存
-    torch.save(model.state_dict(), OUTPUT_DIR / 'resnet_model.pth')
+    torch.save(model.state_dict(), OUTPUT_DIR / 'resnet_model_temp.pth')
 
     all_end_time = time.time()
 

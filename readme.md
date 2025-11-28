@@ -19,7 +19,7 @@ python -m venv LearningColorConstancy_env
 pip install -r requirements.txt
 "E:\LearningColorConstancy\histogram"
 
-tensorboard --logdir=\outputs\tb_logs\
+tensorboard --logdir=.\outputs\tb_logs\
 ```
 
 ## 🔧 インストール手順（GPU対応）
