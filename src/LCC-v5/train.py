@@ -52,7 +52,7 @@ def main():
 
     # 5. モデル定義
     model = ResNetModel().to(DEVICE)
-    model.load_state_dict(torch.load(OUTPUT_DIR / 'best_model_phase1.pth'))
+    # model.load_state_dict(torch.load(OUTPUT_DIR / 'best_model_phase1.pth'))
     logging.info("Loaded best_model_phase1.pth for Phase 2 starting.")
 
     dummy_input = torch.randn(1, 1, 224, 224).to(DEVICE)
@@ -72,18 +72,11 @@ def main():
         param.requires_grad = True
     logging.info("All layers unfrozen (requires_grad = True).")
 
-    # Adamオプティマイザで学習
-    # optimizer = torch.optim.Adam(
-    #     filter(lambda p: p.requires_grad, model.parameters()), 
-    #     lr=LEARNING_RATE,  # 3e-4
-    #     weight_decay=WEIGHT # 1e-4
-    # )
-    # Adamオプティマイザで学習
-    optimizer = torch.optim.Adam(
-        model.parameters(), # 💡 修正: 全てのパラメータを直接渡す
-        lr=LEARNING_RATE,
-        weight_decay=WEIGHT 
-    )
+    params = list(filter(lambda p: p.requires_grad, model.parameters()))
+
+    optimizer_step1 = torch.optim.Adam(params, lr=LEARNING_RATE, weight_decay=WEIGHT)
+    optimizer_step2 = torch.optim.Adam(params, lr=LEARNING_RATE/30, weight_decay=WEIGHT)
+
     # 損失関数はRGBベクトル間の角度誤差
     loss_fn = angular_loss
 
@@ -96,11 +89,13 @@ def main():
     all_start_time =time.time()
 
     # Epochループ
-    for epoch in range(START_EPOCH_2, EPOCHS):
+    for epoch in range(EPOCHS):
         logging.info(f"==== Epoch {epoch+1}/{EPOCHS} ====")
         epoch_start_time = time.time()
-
-        train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer, loss_fn)
+        if(epoch < START_EPOCH_2):
+            train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer_step1, loss_fn)
+        else:
+            train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer_step2, loss_fn)
         val_loss, val_batch_losses = evaluate(model, val_loader, loss_fn)
         
         epoch_end_time = time.time()
