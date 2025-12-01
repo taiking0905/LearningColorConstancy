@@ -83,6 +83,13 @@ for dng_path in dng_files:
             
             # print(f"処理完了: {dng_path}")
 
+<<<<<<< HEAD
+    # 保存（16bit PNG、値域は0〜4095の12bit相当）
+    cv2.imwrite("IMG_3891.png", cv2.cvtColor(rgb_12bit, cv2.COLOR_RGB2BGR))
+
+
+#test
+=======
             # データの最大値（RAWセンサーの白レベル）を取得
             white_level = raw.white_level
             black_level = raw.black_level_per_channel[0]
@@ -106,3 +113,4 @@ for dng_path in dng_files:
 
     except Exception as e:
         print(f"処理中にエラーが発生しました ({dng_path}): {e}")
+>>>>>>> b65740ccffd32fbf337549c9b1e6304ba2ec0537
