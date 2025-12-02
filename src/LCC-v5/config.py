@@ -52,7 +52,9 @@ SEED = 42
 OUTPUT_DIM = 3
 ERASE_PROB =0.5
 ERASE_SIZE = 60
-START_EPOCH_2 = 100
+START_EPOCH_2 = 50
+START_EPOCH_3 = 100
+
 
 
 # -------------------------------

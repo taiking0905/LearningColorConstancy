@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from load_dataset import load_dataset
 from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, train_one_epoch, evaluate
-from config import get_base_dir, TRAIN_DIR, VAL_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, START_EPOCH_2
+from config import get_base_dir, TRAIN_DIR, VAL_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, START_EPOCH_2, START_EPOCH_3
 
 def main():
     set_seed(SEED) 
@@ -58,24 +58,30 @@ def main():
     dummy_input = torch.randn(1, 1, 224, 224).to(DEVICE)
     writer.add_graph(model, dummy_input)
 
-    # for name, param in model.named_parameters():
-    #     # 'layer1'から'layer4'の勾配計算を無効化（フリーズ）
-    #     # ResNetの中間層の重みを保護する
-    #     if 'layer' in name:
-    #         param.requires_grad = False
-    #     # 'conv1'と'fc'層（タスク固有層）は学習させる
-    #     else:
-    #         param.requires_grad = True
-    
-    # 2. 全ての層をアンフリーズ
     for param in model.parameters():
-        param.requires_grad = True
-    logging.info("All layers unfrozen (requires_grad = True).")
+        param.requires_grad = False
+    logging.info("All layers initially frozen.")
 
-    params = list(filter(lambda p: p.requires_grad, model.parameters()))
+    # 2. 'conv1'と'fc'層など、フェーズ1で学習させたい層をアンフリーズする
+    # ResNetModelの実装に依存しますが、ここでは一般的なタスク固有層を想定します
+    for name, param in model.named_parameters():
+        # 'layer'を含まない層（conv1, bn1, fcなど）をアンフリーズ
+        if 'layer' not in name:
+            param.requires_grad = True
+            logging.info(f"Unfreezing layer: {name}")
 
-    optimizer_step1 = torch.optim.Adam(params, lr=LEARNING_RATE, weight_decay=WEIGHT)
-    optimizer_step2 = torch.optim.Adam(params, lr=LEARNING_RATE/30, weight_decay=WEIGHT)
+    # フェーズ1用の学習対象パラメータを抽出
+    params_step1 = list(filter(lambda p: p.requires_grad, model.parameters()))
+    logging.info(f"Phase 1 (Epoch 0 - {START_EPOCH_2-1}) training layers count: {len(params_step1)}")
+
+    # 3. フェーズ2（START_EPOCH_2以降）で使う、全ての層のパラメータリストを準備
+    # 全ての層をアンフリーズした後のパラメータを準備します。
+    # このリストはフェーズ2でのみ使用します。
+    logging.info(f"Phase 2 (Epoch {START_EPOCH_2} onwards) training layers count: {len(list(model.parameters()))}")
+
+    optimizer_step1 = torch.optim.Adam(params_step1, lr=LEARNING_RATE, weight_decay=WEIGHT)
+    optimizer_step2 = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE/3, weight_decay=WEIGHT)
+    optimizer_step3 = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE/30, weight_decay=WEIGHT)
 
     # 損失関数はRGBベクトル間の角度誤差
     loss_fn = angular_loss
@@ -92,12 +98,23 @@ def main():
     for epoch in range(EPOCHS):
         logging.info(f"==== Epoch {epoch+1}/{EPOCHS} ====")
         epoch_start_time = time.time()
+    
+
+        if(epoch == START_EPOCH_2):
+            # フェーズ2の開始エポック
+            for param in model.parameters():  # 修正: model.parameters()をイテレートする
+                param.requires_grad = True
+            logging.info("--- PHASE 2 START: All layers unfrozen for fine-tuning. ---")
+        
         if(epoch < START_EPOCH_2):
             train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer_step1, loss_fn)
-        else:
+        elif(epoch < START_EPOCH_3):
             train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer_step2, loss_fn)
+        else:
+            train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer_step3, loss_fn)
+            
         val_loss, val_batch_losses = evaluate(model, val_loader, loss_fn)
-        
+        val_angular_errors = np.array(val_batch_losses)
         epoch_end_time = time.time()
         logging.info(f"Total epoch time: {epoch_end_time - epoch_start_time:.2f} sec")
         logging.info(f"Loss: Train = {train_loss:.4f}, Val = {val_loss:.4f}")
@@ -107,15 +124,27 @@ def main():
             
             # 検証損失が最小を更新した場合のみモデルを保存
             # ファイル名を 'best_resnet_model.pth' にして、最終保存と区別
-            torch.save(model.state_dict(), OUTPUT_DIR / 'best_resnet_model.pth')
-            logging.info(f"*** NEW BEST MODEL SAVED! Val Loss: {best_val_loss:.4f} ***")
+            torch.save(model.state_dict(), OUTPUT_DIR / 'model.pth')
+            logging.info(f"NEW BEST MODEL SAVED! Val Loss: {best_val_loss:.4f} !!!!!!")
 
+            # 平均と中央値の計算を追加
+            mean_error = np.mean(val_angular_errors) # 角度誤差のMean
+            median_error = np.median(val_angular_errors)
+            percentile_95 = np.percentile(val_angular_errors, 95)
+            
+            # ログにMeanも出力
+            logging.info(f"Val Stats: Mean={mean_error:.4f}, Median={median_error:.4f}, 95-P={percentile_95:.4f}")
+            
+            # TensorBoard に Meanも記録
+            writer.add_scalar('AngularErrorStats/Mean', mean_error, epoch+1)
+            writer.add_scalar('AngularErrorStats/Median', median_error, epoch+1)
+            writer.add_scalar('AngularErrorStats/95th_Percentile', percentile_95, epoch+1)
 
-        # TensorBoard に記録
-        writer.add_scalar('Loss/train', train_loss, epoch+1)
-        writer.add_scalar('Loss/val', val_loss, epoch+1)
-        writer.add_histogram("AngularError/train", np.array(train_batch_losses), epoch+1)
-        writer.add_histogram("AngularError/val", np.array(val_batch_losses), epoch+1)
+            # TensorBoard に記録
+            writer.add_scalar('Loss/train', train_loss, epoch+1)
+            writer.add_scalar('Loss/val', val_loss, epoch+1)
+            writer.add_histogram("AngularError/train", np.array(train_batch_losses), epoch+1)
+            writer.add_histogram("AngularError/val", np.array(val_batch_losses), epoch+1)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
