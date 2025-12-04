@@ -86,23 +86,40 @@ def main():
 
         train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer, loss_fn)
         val_loss, val_batch_losses = evaluate(model, val_loader, loss_fn)
-        
+        val_angular_errors = np.array(val_batch_losses)
         epoch_end_time = time.time()
         logging.info(f"Total epoch time: {epoch_end_time - epoch_start_time:.2f} sec")
         logging.info(f"Loss: Train = {train_loss:.4f}, Val = {val_loss:.4f}")
 
-        # TensorBoard に記録
-        writer.add_scalar('Loss/train', train_loss, epoch+1)
-        writer.add_scalar('Loss/val', val_loss, epoch+1)
-        writer.add_histogram("AngularError/train", np.array(train_batch_losses), epoch+1)
-        writer.add_histogram("AngularError/val", np.array(val_batch_losses), epoch+1)
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            
+            # 検証損失が最小を更新した場合のみモデルを保存
+            # ファイル名を 'best_resnet_model.pth' にして、最終保存と区別
+            torch.save(model.state_dict(), OUTPUT_DIR / 'model.pth')
+            logging.info(f"NEW BEST MODEL SAVED! Val Loss: {best_val_loss:.4f} !!!!!!")
+
+            # 平均と中央値の計算を追加
+            mean_error = np.mean(val_angular_errors) # 角度誤差のMean
+            median_error = np.median(val_angular_errors)
+            percentile_95 = np.percentile(val_angular_errors, 95)
+            
+            # ログにMeanも出力
+            logging.info(f"Val Stats: Mean={mean_error:.4f}, Median={median_error:.4f}, 95-P={percentile_95:.4f}")
+            
+            # TensorBoard に Meanも記録
+            writer.add_scalar('AngularErrorStats/Mean', mean_error, epoch+1)
+            writer.add_scalar('AngularErrorStats/Median', median_error, epoch+1)
+            writer.add_scalar('AngularErrorStats/95th_Percentile', percentile_95, epoch+1)
+
+            # TensorBoard に記録
+            writer.add_scalar('Loss/train', train_loss, epoch+1)
+            writer.add_scalar('Loss/val', val_loss, epoch+1)
+            writer.add_histogram("AngularError/train", np.array(train_batch_losses), epoch+1)
+            writer.add_histogram("AngularError/val", np.array(val_batch_losses), epoch+1)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
-
-
-    # 7. モデル保存
-    torch.save(model.state_dict(), OUTPUT_DIR / 'resnet_model_transfor.pth')
 
     all_end_time = time.time()
 

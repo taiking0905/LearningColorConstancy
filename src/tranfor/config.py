@@ -43,15 +43,15 @@ EPOCHS = 20
 BATCH_SIZE = 16
 LEARNING_RATE =  1e-3
 WEIGHT = 5e-5
-DROPOUT = 0.6
+DROPOUT = 0.5
 
 # -------------------------------
 # 設定パラメータ
 # -------------------------------
 SEED = 42
 OUTPUT_DIM = 3
-ERASE_PROB =0.6
-ERASE_SIZE = 30
+ERASE_PROB =0.5
+ERASE_SIZE = 60
 
 
 
