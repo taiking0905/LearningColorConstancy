@@ -52,6 +52,7 @@ def main():
 
     # 5. モデル定義
     model = ResNetModel().to(DEVICE)
+    print(model)
     # model.load_state_dict(torch.load(OUTPUT_DIR / 'best_model_phase1.pth'))
     logging.info("Loaded best_model_phase1.pth for Phase 2 starting.")
 

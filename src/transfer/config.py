@@ -39,9 +39,9 @@ OUTPUT_DIR = LCC_DIR / "outputs"
 # -------------------------------
 # ハイパーパラメータ
 # -------------------------------
-EPOCHS = 20
+EPOCHS = 500
 BATCH_SIZE = 16
-LEARNING_RATE =  1e-3
+LEARNING_RATE =  1e-4
 WEIGHT = 5e-5
 DROPOUT = 0.5
 
@@ -55,9 +55,14 @@ ERASE_SIZE = 60
 
 
 FREEZE_MODE = "fc_only"  
-# "none"        → 凍結しない（全学習）
-# "fc_only"     → FCだけ学習（今のあなたの設定）
-# "last_block"  → ResNetの最後のブロックだけ学習
+# -------------------------------
+# none 全層学習
+# fc_only FCだけ学習
+# layer4_fc 4層以降を学習
+# deep_blocks 3層以降を学習
+# freeze_only_layer conv1とFC層を学習
+# -------------------------------
+
 # -------------------------------
 # デバイス設定
 # -------------------------------

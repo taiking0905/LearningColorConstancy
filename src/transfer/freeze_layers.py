@@ -5,12 +5,6 @@ def freeze_layers(model, mode):
             p.requires_grad = True
         return model.model.parameters()
 
-    elif mode == "all":
-        # 全層凍結
-        for p in model.parameters():
-            p.requires_grad = False
-        return []
-
     elif mode == "fc_only":
         # 全層凍結 → FCだけ学習
         for p in model.parameters():
@@ -28,7 +22,6 @@ def freeze_layers(model, mode):
         for p in model.model.fc.parameters():
             p.requires_grad = True
         return list(model.model.layer4.parameters()) + list(model.model.fc.parameters())
-
     
     elif mode == "deep_blocks":
         #全層凍結 → 3層以降を学習
