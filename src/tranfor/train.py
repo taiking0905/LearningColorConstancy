@@ -11,7 +11,61 @@ from torch.utils.tensorboard import SummaryWriter
 from load_dataset import load_dataset
 from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, train_one_epoch, evaluate
-from config import get_base_dir, TRAIN_DIR, VAL_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed
+from config import get_base_dir, TRAIN_DIR, VAL_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, FREEZE_MODE
+def freeze_layers(model, mode):
+    if mode == "none":
+        # 全層学習
+        for p in model.parameters():
+            p.requires_grad = True
+        return model.model.parameters()
+
+    elif mode == "all":
+        # 全層凍結
+        for p in model.parameters():
+            p.requires_grad = False
+        return []
+
+    elif mode == "fc_only":
+        # 全層凍結 → FCだけ学習
+        for p in model.parameters():
+            p.requires_grad = False
+        for p in model.model.fc.parameters():
+            p.requires_grad = True
+        return model.model.fc.parameters()
+    
+    elif mode == "layer4_fc":
+        #全層凍結 → 4層以降を学習
+        for p in model.parameters():
+            p.requires_grad = False
+        for p in model.model.layer4.parameters():
+            p.requires_grad = True
+        for p in model.model.fc.parameters():
+            p.requires_grad = True
+        return list(model.model.layer4.parameters()) + list(model.model.fc.parameters())
+
+    
+    elif mode == "deep_blocks":
+        #全層凍結 → 3層以降を学習
+        for p in model.parameters():
+            p.requires_grad = False
+        for p in model.model.layer3.parameters():
+            p.requires_grad = True
+        for p in model.model.layer4.parameters():
+            p.requires_grad = True
+        for p in model.model.fc.parameters():
+            p.requires_grad = True
+        return list(model.model.layer3.parameters()) \
+            + list(model.model.layer4.parameters()) \
+            + list(model.model.fc.parameters())
+    
+    elif mode == "freeze_only_layer":
+        #全層凍結 → conv1とFC層を学習
+        for param in model.parameters():
+            param.requires_grad = False
+        for name, param in model.named_parameters():
+            if 'layer' not in name:
+                param.requires_grad = True
+        return list(filter(lambda p: p.requires_grad, model.parameters()))
 
 def main():
     set_seed(SEED) 
@@ -52,21 +106,15 @@ def main():
 
     # 5. モデル定義
     model = ResNetModel().to(DEVICE)
-    model.load_state_dict(torch.load("./outputs/resnet_model.pth"))
+    model.load_state_dict(torch.load("./outputs/transfor_model.pth"))
 
-    # 全層を凍結
-    for param in model.parameters():
-        param.requires_grad = False
-
-    # FC 層だけ勾配ON
-    for param in model.model.fc.parameters():
-        param.requires_grad = True
+    freeze_layerstrainable_params = freeze_layers(model, FREEZE_MODE)
 
     dummy_input = torch.randn(1, 1, 224, 224).to(DEVICE)
     writer.add_graph(model, dummy_input)
 
     # Adamオプティマイザで学習
-    optimizer = torch.optim.Adam(model.model.fc.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT)
+    optimizer = torch.optim.Adam(freeze_layerstrainable_params, lr=LEARNING_RATE, weight_decay=WEIGHT)
 
 
     # 損失関数はRGBベクトル間の角度誤差
