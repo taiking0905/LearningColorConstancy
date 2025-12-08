@@ -10,42 +10,60 @@ class ResNetModel(nn.Module):
     def __init__(self, output_dim=OUTPUT_DIM, dropout_rate=DROPOUT):
         super().__init__()
         
-        # 💡 修正点 1: ImageNetの学習済み重みでモデルを初期化
-        # weights=ResNet18_Weights.IMAGENET1K_V1 を指定することで転移学習を実行
-        model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+        base = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
 
-        # 💡 修正点 2: 最初の層を置き換える (1ch入力への適応)
-        # in_channelsが1chに変わると、元の重み（3ch用）は利用できなくなるため、
-        # conv1の重みはランダム初期化（またはKaiming初期化など）に置き換えられる
-        model.conv1 = nn.Conv2d(
+        # ---- conv1 置き換え ----
+        base.conv1 = nn.Conv2d(
             in_channels=1,
             out_channels=64,
-            kernel_size=7,
-            stride=2,
-            padding=3,
+            kernel_size=3,
+            stride=1,
+            padding=1,
             bias=False
         )
-        
-        # Dropout層を中間に挿入（元のコードを踏襲）
-        model.layer3 = nn.Sequential(
-            model.layer3,
+        nn.init.kaiming_normal_(base.conv1.weight, mode='fan_out', nonlinearity='relu')
+
+        # ---- layer3 の後に Dropout 追加 ----
+        base.layer3 = nn.Sequential(
+            base.layer3,
             nn.Dropout(p=dropout_rate)
         )
 
-        # 💡 修正点 3: 最後のfc層を置き換える (3次元出力への適応)
-        # 全結合層の重みも、ImageNetの1000クラス分類の重みから、
-        # 照明推定の3次元出力に合わせた新しい重み（ランダム初期化）に置き換えられる
-        in_features = model.fc.in_features
-        model.fc = nn.Sequential(
-            nn.Dropout(p=dropout_rate),
-            nn.Linear(in_features, output_dim)
+        # ---- FC を強化 ----
+        in_features = base.fc.in_features
+        base.fc = nn.Sequential(
+            nn.Linear(in_features, 256),
+            nn.ReLU(),
+            nn.Dropout(p=0.2),
+            nn.Linear(256, output_dim)
         )
-        
-        self.model = model
-        
-    def forward(self, x):
-        return self.model(x)
 
+        self.backbone = base   # 名前を分けておく
+
+    def forward(self, x):
+
+        # ---- ResNet18, layer4 まで ----
+        x = self.backbone.conv1(x)
+        x = self.backbone.bn1(x)
+        x = self.backbone.relu(x)
+        x = self.backbone.maxpool(x)
+
+        x = self.backbone.layer1(x)
+        x = self.backbone.layer2(x)
+        x = self.backbone.layer3(x)
+        x = self.backbone.layer4(x)
+
+        # ---- Global average pooling ----
+        x = self.backbone.avgpool(x)
+        x = torch.flatten(x, 1)
+
+        # ---- FC ----
+        illum = self.backbone.fc(x)
+
+        # ---- L2 normalize (角度誤差用) ----
+        illum = illum / (illum.norm(dim=1, keepdim=True) + 1e-8)
+
+        return illum
 
 # 🔺角度ベースの損失関数（色ベクトルの方向を比較）
 def angular_loss(pred, target):

@@ -81,9 +81,9 @@ def main():
     # 2. モデルロード
     model = ResNetModel().to(DEVICE)
     # 転移学習前
-    # model.load_state_dict(torch.load(OUTPUT_DIR / 'best_resnet_model.pth'))
+    model.load_state_dict(torch.load(OUTPUT_DIR / 'best_resnet_model.pth'))
     # 転移学習後
-    model.load_state_dict(torch.load(OUTPUT_DIR / 'resnet_model_transfer.pth'))
+    # model.load_state_dict(torch.load(OUTPUT_DIR / 'resnet_model_transfer.pth'))
     model.eval()
 
     # 3. 評価
