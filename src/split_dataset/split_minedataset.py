@@ -52,22 +52,27 @@ print(f"合計 → Train: {len(train_files_total)}, Test: {len(test_files_total)
 # =======================================
 # k-fold 用の train/val 分割
 # =======================================
-folds = []
 kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED)
 
-for fold_idx, (train_idx, val_idx) in enumerate(kf.split(train_files_total)):
-    train_fold = [train_files_total[i] for i in train_idx]
-    val_fold   = [train_files_total[i] for i in val_idx]
-    folds.append({
-        "train": train_fold,
-        "val": val_fold
-    })
-    print(f"Fold {fold_idx+1}: Train {len(train_fold)}, Val {len(val_fold)}")
+# X_train を k-fold 分割して train/val を作成
+folds = []
+# 1. k-fold 分割
+for fold_idx, (train_idx, val_idx) in enumerate(kf.split(X_train)):
+    train_files = [X_train[i] for i in train_idx]
+    val_files   = [X_train[i] for i in val_idx]
+    folds.append((train_files, val_files))
+    print(f"Fold {fold_idx+1}: Train {len(train_files)}, Val {len(val_files)}")
 
-# =======================================
-# folds.json 保存
-# =======================================
+# 2. 辞書形式に変換して保存
+folds_dict = {}
+for i, (train_files, val_files) in enumerate(folds):
+    folds_dict[f"fold_{i+1}"] = {
+        "train": train_files,
+        "val": val_files
+    }
+
 folds_save_path = BASE_DIR_MINE / "folds.json"
 with open(folds_save_path, "w") as f:
-    json.dump(folds, f, indent=2)
+    json.dump(folds_dict, f, indent=2)
 
+print(f"Saved all folds to {folds_save_path}")

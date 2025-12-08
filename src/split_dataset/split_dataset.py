@@ -61,18 +61,27 @@ kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED)
 
 # X_train を k-fold 分割して train/val を作成
 folds = []
+# 1. k-fold 分割
 for fold_idx, (train_idx, val_idx) in enumerate(kf.split(X_train)):
     train_files = [X_train[i] for i in train_idx]
     val_files   = [X_train[i] for i in val_idx]
     folds.append((train_files, val_files))
     print(f"Fold {fold_idx+1}: Train {len(train_files)}, Val {len(val_files)}")
-    
-folds_save_path = BASE_DIR_ORGINAL / "folds.json"
-folds_dict = {f"fold_{i+1}": {"train": train_files, "val": val_files} 
-            for i, (train_files, val_files) in enumerate(folds)}
 
+# 2. 辞書形式に変換して保存
+folds_dict = {}
+for i, (train_files, val_files) in enumerate(folds):
+    folds_dict[f"fold_{i+1}"] = {
+        "train": train_files,
+        "val": val_files
+    }
+
+folds_save_path = BASE_DIR_ORGINAL / "folds.json"
 with open(folds_save_path, "w") as f:
     json.dump(folds_dict, f, indent=2)
+
+print(f"Saved all folds to {folds_save_path}")
+
 
 # folds リストには各 fold の train / val ファイルパスが格納される
 # 学習ループ内で fold ごとに使用可能

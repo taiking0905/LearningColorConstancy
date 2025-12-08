@@ -7,16 +7,17 @@ import io
 from PIL import Image
 import logging
 from torch.utils.tensorboard import SummaryWriter
+import json
 
-from load_dataset import load_dataset
+from load_dataset import load_dataset_from_list
 from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, train_one_epoch, evaluate
-from config import get_base_dir, TRAIN_DIR, VAL_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, START_EPOCH_2, START_EPOCH_3
+from config import BASE_DIR, TRAIN_DIR, VAL_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, START_EPOCH_2, START_EPOCH_3
 
 def main():
     set_seed(SEED) 
     rng = np.random.default_rng(SEED)
-    base_dir = get_base_dir()
+    base_dir = BASE_DIR
     print("Base dir:", base_dir)
     print(torch.cuda.is_available())  # TrueならOK
     print(torch.cuda.get_device_name())  # GPU名が出る
@@ -28,10 +29,17 @@ def main():
     )
     writer = SummaryWriter(OUTPUT_DIR / 'tb_logs')
 
+    with open(BASE_DIR / "folds.json", "r") as f:
+        folds = json.load(f)
+
+    fold_id = 1
+    train_files = folds[f"fold_{fold_id}"]["train"]
+    val_files   = folds[f"fold_{fold_id}"]["val"]
+
     
     # 1. データ読み込み
-    X_train, y_train_df = load_dataset(TRAIN_DIR, REAL_RGB_JSON_PATH)
-    X_val, y_val_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
+    X_train, y_train_df = load_dataset_from_list(train_files, REAL_RGB_JSON_PATH)
+    X_val,   y_val_df   = load_dataset_from_list(val_files, REAL_RGB_JSON_PATH)
     # 出力がX= numpy Y=df
     
     # 2. Tensorに変換
@@ -125,7 +133,7 @@ def main():
             
             # 検証損失が最小を更新した場合のみモデルを保存
             # ファイル名を 'best_resnet_model.pth' にして、最終保存と区別
-            torch.save(model.state_dict(), OUTPUT_DIR / 'model.pth')
+            torch.save(model.state_dict(), OUTPUT_DIR / f'model_fold_{fold_id}.pth')
             logging.info(f"NEW BEST MODEL SAVED! Val Loss: {best_val_loss:.4f} !!!!!!")
 
             # 平均と中央値の計算を追加
