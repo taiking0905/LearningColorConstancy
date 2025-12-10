@@ -41,17 +41,17 @@ OUTPUT_DIR = LCC_DIR / "outputs"
 # -------------------------------
 EPOCHS = 1000
 BATCH_SIZE = 16
-LEARNING_RATE =  3e-4
+LEARNING_RATE =  1e-4
 WEIGHT = 5e-5
-DROPOUT = 0.5
+DROPOUT = 0.2
 
 # -------------------------------
 # 設定パラメータ
 # -------------------------------
 SEED = 42
 OUTPUT_DIM = 3
-ERASE_PROB =0.5
-ERASE_SIZE = 60
+ERASE_PROB =0.2
+ERASE_SIZE = 30
 START_EPOCH_2 = 50
 START_EPOCH_3 = 100
 

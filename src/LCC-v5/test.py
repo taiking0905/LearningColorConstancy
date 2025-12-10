@@ -3,11 +3,12 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import trim_mean
+import json
 
 from load_dataset import load_dataset
 from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, evaluate
-from config import get_base_dir, TEST_DIR, IPHONE_TEST_DIR, VAL_DIR, REAL_RGB_JSON_PATH, OUTPUT_DIR, BATCH_SIZE, SEED, DEVICE, set_seed
+from config import BASE_DIR, TEST_DIR, IPHONE_TEST_DIR, VAL_DIR, REAL_RGB_JSON_PATH, OUTPUT_DIR, BATCH_SIZE, SEED, DEVICE, set_seed
 
 def compute_angular_errors(y_pred_all, y_true_all):
     y_pred_norm = y_pred_all / np.linalg.norm(y_pred_all, axis=1, keepdims=True)
@@ -69,14 +70,14 @@ def worst_25_percent(data, proportion):
 
 def main():
     set_seed(SEED)
-    base_dir = get_base_dir()
+    base_dir = BASE_DIR
     print("Base dir:", base_dir)
     print("DEVICE:", DEVICE)
 
-    # 1. データ読み込み
-    X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
+    X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
+    # X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
     y_test = y_test_df[["R", "G" , "B"]].values
-    val_dataset = HistogramDataset(X_test, y_test, rng=np.random.default_rng(SEED))
+    val_dataset = HistogramDataset(X_test, y_test)
 
     # 2. モデルロード
     model = ResNetModel().to(DEVICE)

@@ -34,7 +34,7 @@ class ResNetModel(nn.Module):
         base.fc = nn.Sequential(
             nn.Linear(in_features, 256),
             nn.ReLU(),
-            nn.Dropout(p=0.2),
+            nn.Dropout(p=dropout_rate),
             nn.Linear(256, output_dim)
         )
 
