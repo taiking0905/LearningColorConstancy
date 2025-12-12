@@ -50,7 +50,7 @@ DROPOUT = 0.2
 # -------------------------------
 SEED = 42
 OUTPUT_DIM = 3
-ERASE_PROB =0.2
+ERASE_PROB =0.3
 ERASE_SIZE = 30
 START_EPOCH_2 = 50
 START_EPOCH_3 = 100

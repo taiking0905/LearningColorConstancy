@@ -21,49 +21,29 @@ class ResNetModel(nn.Module):
             padding=1,
             bias=False
         )
+        base.bn1.reset_parameters()
         nn.init.kaiming_normal_(base.conv1.weight, mode='fan_out', nonlinearity='relu')
 
-        # ---- layer3 の後に Dropout 追加 ----
-        base.layer3 = nn.Sequential(
-            base.layer3,
-            nn.Dropout(p=dropout_rate)
-        )
-
         # ---- FC を強化 ----
-        in_features = base.fc.in_features
-        base.fc = nn.Sequential(
-            nn.Linear(in_features, 256),
+        self.backbone = nn.Sequential(
+            *list(base.children())[:-1]  # layer4 まで + avgpool まで
+        )
+        self.fc = nn.Sequential(
+            nn.Linear(512, 64),
             nn.ReLU(),
             nn.Dropout(p=dropout_rate),
-            nn.Linear(256, output_dim)
+            nn.Linear(64, output_dim)
         )
-
-        self.backbone = base   # 名前を分けておく
+        self.dropout = nn.Dropout(p=dropout_rate)
 
     def forward(self, x):
-
-        # ---- ResNet18, layer4 まで ----
-        x = self.backbone.conv1(x)
-        x = self.backbone.bn1(x)
-        x = self.backbone.relu(x)
-        x = self.backbone.maxpool(x)
-
-        x = self.backbone.layer1(x)
-        x = self.backbone.layer2(x)
-        x = self.backbone.layer3(x)
-        x = self.backbone.layer4(x)
-
-        # ---- Global average pooling ----
-        x = self.backbone.avgpool(x)
+        x = self.backbone(x)        # layer4 + avgpoolまで
         x = torch.flatten(x, 1)
-
-        # ---- FC ----
-        illum = self.backbone.fc(x)
-
-        # ---- L2 normalize (角度誤差用) ----
-        illum = illum / (illum.norm(dim=1, keepdim=True) + 1e-8)
-
+        x = self.dropout(x)         # 過学習防止
+        illum = self.fc(x)
+        illum = illum / (illum.norm(dim=1, keepdim=True) + 1e-8)  # L2 normalize
         return illum
+
 
 # 🔺角度ベースの損失関数（色ベクトルの方向を比較）
 def angular_loss(pred, target):
