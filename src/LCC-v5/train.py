@@ -87,13 +87,13 @@ def main():
     scheduler_step2 = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer_step2,
         T_max=START_EPOCH_3 - START_EPOCH_2,  # Step2 の期間
-        eta_min=LEARNING_RATE/10               # Step3 LR に近い値まで下げる
+        eta_min=LEARNING_RATE/5               # Step3 LR に近い値まで下げる
     )
 
     scheduler_step3 = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer_step3,
         T_max=EPOCHS - START_EPOCH_3,
-        eta_min=LEARNING_RATE/100              # 最終的にさらに小さく
+        eta_min=LEARNING_RATE/20              # 最終的にさらに小さく
     )
 
     # 損失関数はRGBベクトル間の角度誤差

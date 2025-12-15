@@ -16,8 +16,8 @@ class ResNetModel(nn.Module):
         base.conv1 = nn.Conv2d(
             in_channels=1,
             out_channels=64,
-            kernel_size=3,
-            stride=1,
+            kernel_size=7,
+            stride=2,
             padding=1,
             bias=False
         )
@@ -28,13 +28,10 @@ class ResNetModel(nn.Module):
         self.backbone = nn.Sequential(
             *list(base.children())[:-1]  # layer4 まで + avgpool まで
         )
-        self.fc = nn.Sequential(
-            nn.Linear(512, 64),
-            nn.ReLU(),
-            nn.Dropout(p=dropout_rate),
-            nn.Linear(64, output_dim)
-        )
         self.dropout = nn.Dropout(p=dropout_rate)
+        self.fc = nn.Sequential(
+            nn.Linear(512, output_dim)
+        )
 
     def forward(self, x):
         x = self.backbone(x)        # layer4 + avgpoolまで
