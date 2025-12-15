@@ -7,7 +7,7 @@ import logging
 from torch.utils.tensorboard import SummaryWriter
 from load_dataset import load_dataset
 from HistogramDataset import HistogramDataset
-from ResNetModel import ResNetModel, angular_loss, train_one_epoch, evaluate
+from ResNetModel import ResNetModel, mixed_loss, train_one_epoch, evaluate
 from config import BASE_DIR, TRAIN_DIR, VAL_DIR, TEST_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, START_EPOCH_2, START_EPOCH_3
 
 def main():
@@ -97,7 +97,7 @@ def main():
     )
 
     # 損失関数はRGBベクトル間の角度誤差
-    loss_fn = angular_loss
+    loss_fn = mixed_loss
 
 
     # 学習記録用リスト
