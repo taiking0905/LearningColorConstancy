@@ -7,7 +7,7 @@ import json
 
 from load_dataset import load_dataset
 from HistogramDataset import HistogramDataset
-from ResNetModel import ResNetModel, mixed_loss, evaluate
+from ResNetModel import ResNetModel, angular_loss, evaluate
 from config import BASE_DIR, TEST_DIR, IPHONE_TEST_DIR, VAL_DIR, REAL_RGB_JSON_PATH, OUTPUT_DIR, BATCH_SIZE, SEED, DEVICE, set_seed
 
 def compute_angular_errors(y_pred_all, y_true_all):
@@ -86,13 +86,13 @@ def main():
 
     # 3. 評価
     test_loader = DataLoader(val_dataset, BATCH_SIZE, shuffle=False, num_workers=0, pin_memory=True)
-    test_loss, _ = evaluate(model, test_loader, mixed_loss)
+    test_loss, _ = evaluate(model, test_loader, angular_loss)
     print(f"\n📊 Test Loss = {test_loss:.4f}")
 
     # 4. RGB比較（5件）
     print("\n🎨 Prediction vs Actual (first 5 samples):")
     with torch.no_grad():
-        for i in range(min(30, len(X_test))):
+        for i in range(min(100, len(X_test))):
             x = torch.tensor(X_test[i], dtype=torch.float32).unsqueeze(0).to(DEVICE)
             pred = model(x)[0].cpu()
             pred /= torch.sum(pred)  # 出力ベクトルを正規化
@@ -101,7 +101,7 @@ def main():
             y_true = torch.tensor(y_test[i], dtype=torch.float32)
             y_true /= torch.sum(y_true)  # 🔧 各y_test[i]を個別に正規化
             y_true = y_true.unsqueeze(0)
-            loss = mixed_loss(pred, y_true).item()
+            loss = angular_loss(pred, y_true).item()
             cos_sim = 1 - loss
 
             print(f"{i+1:2d}: "

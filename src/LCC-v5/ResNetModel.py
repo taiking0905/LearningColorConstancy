@@ -42,23 +42,21 @@ class ResNetModel(nn.Module):
         return illum
 
 
-def mixed_loss(pred, target, alpha=0.7):
-    # L2 正規化
-    pred_n = F.normalize(pred, dim=1)
-    target_n = F.normalize(target, dim=1)
+# 🔺角度ベースの損失関数（色ベクトルの方向を比較）
+def angular_loss(pred, target):
+    """
+    pred: モデルの出力 (N, 3)
+    target: 正解のRGB比率ベクトル (N, 3)
+    → 出力ベクトルと正解ベクトルの角度（cos類似度）で誤差を計算
+    """
+    pred_norm = F.normalize(pred, dim=1)     # 出力をL2正規化（長さを1に）
+    target_norm = F.normalize(target, dim=1) # 正解もL2正規化
 
-    # Angular loss
-    cos_sim = (pred_n * target_n).sum(dim=1)
+    cos_sim = (pred_norm * target_norm).sum(dim=1)  # 各ベクトル間のcos類似度
     cos_sim = torch.clamp(cos_sim, -1.0, 1.0)
-    angular = 1 - cos_sim
-
-    # L2 loss
-    l2 = F.mse_loss(pred_n, target_n, reduction='none').sum(dim=1)
-
-    # 混合
-    loss = alpha * angular + (1 - alpha) * l2
-    return loss.mean()
-
+    
+    loss = 1 - cos_sim  # cosθが高い（方向が一致）ほど損失が小さい
+    return loss.mean()  # バッチ平均の損失を返す
 
 # 🔁 1エポック分の訓練処理
 
