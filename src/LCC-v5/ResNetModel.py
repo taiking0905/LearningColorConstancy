@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet18, ResNet18_Weights
+import numpy as np
 
 from config import DROPOUT, OUTPUT_DIM, DEVICE
 
@@ -58,47 +59,66 @@ def angular_loss(pred, target):
     loss = 1 - cos_sim  # cosθが高い（方向が一致）ほど損失が小さい
     return loss.mean()  # バッチ平均の損失を返す
 
-# 🔁 1エポック分の訓練処理
+def compute_angular_errors(y_pred_all, y_true_all):
+    y_pred_norm = y_pred_all / np.linalg.norm(y_pred_all, axis=1, keepdims=True)
+    y_true_norm = y_true_all / np.linalg.norm(y_true_all, axis=1, keepdims=True)
+    dot_products = np.clip(np.sum(y_pred_norm * y_true_norm, axis=1), -1.0, 1.0)
+    return np.degrees(np.arccos(dot_products))
 
+# 🔁 1エポック分の訓練処理
 def train_one_epoch(model, loader, optimizer, loss_fn):
     model.train()
+
+    angular_errors_all = []
     total_loss = 0.0
-    optimizer.zero_grad()
-    batch_losses = []
 
     for X_batch, y_batch in loader:
         X_batch = X_batch.to(DEVICE)
         y_batch = y_batch.to(DEVICE)
 
+        optimizer.zero_grad()
+
         pred = model(X_batch)
         loss = loss_fn(pred, y_batch)
-        batch_losses.append(loss.item())
-
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         total_loss += loss.item()
 
-    average_loss = total_loss / len(loader)
-    return average_loss, batch_losses
+        # ---- 角度誤差（評価用）----
+        with torch.no_grad():
+            pred_np = pred.detach().cpu().numpy()
+            y_np = y_batch.detach().cpu().numpy()
+            ang = compute_angular_errors(pred_np, y_np)
+            angular_errors_all.extend(ang)
+
+    avg_loss = total_loss / len(loader)
+    mean_ang = np.mean(angular_errors_all)
+
+    return avg_loss, mean_ang, np.array(angular_errors_all)
 
 # 🔍 評価関数（検証・テスト用）
 def evaluate(model, loader, loss_fn):
-    model.eval()  
+    model.eval()
+
+    angular_errors_all = []
     total_loss = 0.0
-    batch_losses = []
 
-    with torch.no_grad():  # 勾配を計算しない（推論のみで高速・省メモリ）
-
+    with torch.no_grad():
         for X_batch, y_batch in loader:
             X_batch = X_batch.to(DEVICE)
             y_batch = y_batch.to(DEVICE)
 
-            pred = model(X_batch)               # モデル出力
-            loss = loss_fn(pred, y_batch)       # 損失を計算
+            pred = model(X_batch)
+            loss = loss_fn(pred, y_batch)
             total_loss += loss.item()
-            batch_losses.append(loss.item())
 
-    average_loss = total_loss / len(loader)     # 全体の平均損失
-    return average_loss, batch_losses
+            pred_np = pred.cpu().numpy()
+            y_np = y_batch.cpu().numpy()
+            ang = compute_angular_errors(pred_np, y_np)
+            angular_errors_all.extend(ang)
+
+    avg_loss = total_loss / len(loader)
+    mean_ang = np.mean(angular_errors_all)
+
+    return avg_loss, mean_ang, np.array(angular_errors_all)

@@ -86,7 +86,7 @@ def main():
 
     # 3. 評価
     test_loader = DataLoader(val_dataset, BATCH_SIZE, shuffle=False, num_workers=0, pin_memory=True)
-    test_loss, _ = evaluate(model, test_loader, angular_loss)
+    test_loss, _ , _= evaluate(model, test_loader, angular_loss)
     print(f"\n📊 Test Loss = {test_loss:.4f}")
 
     # 4. RGB比較（5件）

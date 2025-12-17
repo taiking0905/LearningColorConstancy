@@ -9,6 +9,8 @@ from load_dataset import load_dataset
 from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, train_one_epoch, evaluate
 from config import BASE_DIR, TRAIN_DIR, VAL_DIR, TEST_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, START_EPOCH_2, START_EPOCH_3
+import pandas as pd
+
 
 def main():
     set_seed(SEED) 
@@ -99,6 +101,7 @@ def main():
     # 学習記録用リスト
     train_losses = []
     val_losses = []
+    epoch_logs = []
 
     best_val_loss = float('inf')
     all_start_time =time.time()
@@ -108,7 +111,7 @@ def main():
         logging.info(f"==== Epoch {epoch+1}/{EPOCHS} ====")
         epoch_start_time = time.time()
     
-        train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer_step, loss_fn)
+        train_loss, train_batch_losses , train_angular_errors= train_one_epoch(model, train_loader, optimizer_step, loss_fn)
 
         # if(epoch == START_EPOCH_2):
         #     # フェーズ2の開始エポック
@@ -129,11 +132,27 @@ def main():
         #     train_loss, train_batch_losses = train_one_epoch(model, train_loader, optimizer_step3, loss_fn)
         #     scheduler_step3.step()  # ← Step3 では epoch ごとに LR を更新
 
-        val_loss, val_batch_losses = evaluate(model, val_loader, loss_fn)
-        val_angular_errors = np.array(val_batch_losses)
+        val_loss, val_batch_losses, val_angular_errors = evaluate(model, val_loader, loss_fn)
         epoch_end_time = time.time()
         logging.info(f"Total epoch time: {epoch_end_time - epoch_start_time:.2f} sec")
         logging.info(f"Loss: Train = {train_loss:.4f}, Val = {val_loss:.4f}")
+        epoch_logs.append({
+            "epoch": epoch + 1,
+            "train_loss": train_loss,
+            "val_loss": val_loss,
+            "train_mean_ang": np.mean(train_angular_errors),
+            "train_median_ang": np.median(train_angular_errors),
+            "train_p95_ang": np.percentile(train_angular_errors, 95),
+            "train_p99_ang": np.percentile(train_angular_errors, 99),
+            "train_max_ang": np.max(train_angular_errors),
+            "train_var_ang": np.var(train_angular_errors),
+            "val_mean_ang": np.mean(val_angular_errors),
+            "val_median_ang": np.median(val_angular_errors),
+            "val_p95_ang": np.percentile(val_angular_errors, 95),
+            "val_p99_ang": np.percentile(val_angular_errors, 99),
+            "val_max_ang": np.max(val_angular_errors),
+            "val_var_ang": np.var(val_angular_errors)
+        })
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -166,6 +185,8 @@ def main():
         val_losses.append(val_loss)
 
     all_end_time = time.time()
+    df = pd.DataFrame(epoch_logs)
+    df.to_csv(OUTPUT_DIR / "metrics.csv", index=False)
 
     print(f"☆Total all time: {all_end_time - all_start_time:.2f} sec")
     
