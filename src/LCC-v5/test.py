@@ -74,14 +74,14 @@ def main():
     print("Base dir:", base_dir)
     print("DEVICE:", DEVICE)
 
-    # X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
-    X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
+    X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
+    # X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
     y_test = y_test_df[["R", "G" , "B"]].values
     val_dataset = HistogramDataset(X_test, y_test)
 
     # 2. モデルロード
     model = ResNetModel().to(DEVICE)
-    model.load_state_dict(torch.load(OUTPUT_DIR / 'model.pth'))
+    model.load_state_dict(torch.load(OUTPUT_DIR / 'model1.pth'))
     model.eval()
 
     # 3. 評価

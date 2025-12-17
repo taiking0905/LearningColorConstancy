@@ -10,6 +10,32 @@ from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, train_one_epoch, evaluate
 from config import BASE_DIR, TRAIN_DIR, VAL_DIR, TEST_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, START_EPOCH_2, START_EPOCH_3
 import pandas as pd
+TH = 0.1  # 角度差の閾値（degree）
+
+def is_better(curr, best):
+    # curr, best は dict
+    # {mean, median, p95}
+
+    # ① Mean
+    if curr["mean"] < best["mean"] - TH:
+        return True
+    if curr["mean"] > best["mean"] + TH:
+        return False
+
+    # ② Median（mean が僅差）
+    if curr["median"] < best["median"] - TH:
+        return True
+    if curr["median"] > best["median"] + TH:
+        return False
+
+    # ③ 95-P（mean, median が僅差）
+    if curr["p95"] < best["p95"] - TH:
+        return True
+    if curr["p95"] > best["p95"] + TH:
+        return False
+
+    # ④ 完全同等 → 更新しない
+    return False
 
 
 def main():
@@ -103,8 +129,8 @@ def main():
     val_losses = []
     epoch_logs = []
 
-    best_val_loss = float('inf')
     all_start_time =time.time()
+    best_metrics = None
 
     # Epochループ
     for epoch in range(EPOCHS):
@@ -153,34 +179,36 @@ def main():
             "val_max_ang": np.max(val_angular_errors),
             "val_var_ang": np.var(val_angular_errors)
         })
+        curr_metrics = {
+            "mean": np.mean(val_angular_errors),
+            "median": np.median(val_angular_errors),
+            "p95": np.percentile(val_angular_errors, 95),
+        }
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        if best_metrics is None or is_better(curr_metrics, best_metrics):
+            best_metrics = curr_metrics
             
             # 検証損失が最小を更新した場合のみモデルを保存
             # ファイル名を 'best_resnet_model.pth' にして、最終保存と区別
-            torch.save(model.state_dict(), OUTPUT_DIR / f'model.pth')
-            logging.info(f"NEW BEST MODEL SAVED! Val Loss: {best_val_loss:.4f} !!!!!!")
+            torch.save(model.state_dict(), OUTPUT_DIR / f'model1.pth')
+            logging.info(f"new model saved")
 
-            # 平均と中央値の計算を追加
-            mean_error = np.mean(val_angular_errors) # 角度誤差のMean
-            median_error = np.median(val_angular_errors)
-            percentile_95 = np.percentile(val_angular_errors, 95)
-            
-            # ログにMeanも出力
-            logging.info(f"Val Stats: Mean={mean_error:.4f}, Median={median_error:.4f}, 95-P={percentile_95:.4f}")
-            
-            # TensorBoard に Meanも記録
-            writer.add_scalar('AngularErrorStats/Mean', mean_error, epoch+1)
-            writer.add_scalar('AngularErrorStats/Median', median_error, epoch+1)
-            writer.add_scalar('AngularErrorStats/95th_Percentile', percentile_95, epoch+1)
-
-            # TensorBoard に記録
-            writer.add_scalar('Loss/train', train_loss, epoch+1)
-            writer.add_scalar('Loss/val', val_loss, epoch+1)
-            writer.add_histogram("AngularError/train", np.array(train_batch_losses), epoch+1)
-            writer.add_histogram("AngularError/val", np.array(val_batch_losses), epoch+1)
-
+        # 平均と中央値の計算を追加
+        mean_error = np.mean(val_angular_errors) # 角度誤差のMean
+        median_error = np.median(val_angular_errors)
+        percentile_95 = np.percentile(val_angular_errors, 95)
+        
+        # ログにMeanも出力
+        logging.info(f"Val Stats: Mean={mean_error:.4f}, Median={median_error:.4f}, 95-P={percentile_95:.4f}")
+        writer.add_histogram("AngularError/train", np.array(train_batch_losses), epoch+1)
+        writer.add_histogram("AngularError/val", np.array(val_batch_losses), epoch+1)
+        # TensorBoard に Meanも記録
+        writer.add_scalar('AngularErrorStats/Mean', mean_error, epoch+1)
+        writer.add_scalar('AngularErrorStats/Median', median_error, epoch+1)
+        writer.add_scalar('AngularErrorStats/95th_Percentile', percentile_95, epoch+1)
+        # TensorBoard に記録
+        writer.add_scalar('Loss/train', train_loss, epoch+1)
+        writer.add_scalar('Loss/val', val_loss, epoch+1)
         train_losses.append(train_loss)
         val_losses.append(val_loss)
 
