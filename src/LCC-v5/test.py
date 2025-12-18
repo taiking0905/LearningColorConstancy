@@ -74,8 +74,8 @@ def main():
     print("Base dir:", base_dir)
     print("DEVICE:", DEVICE)
 
-    X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
-    # X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
+    # X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
+    X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
     y_test = y_test_df[["R", "G" , "B"]].values
     val_dataset = HistogramDataset(X_test, y_test)
 
