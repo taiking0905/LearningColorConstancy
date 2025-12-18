@@ -6,7 +6,7 @@ from config import DATASETS_DIR, BASE_DIR_ORGINAL, SEED
 TRAIN_DIR = BASE_DIR_ORGINAL / "train"
 VAL_DIR   = BASE_DIR_ORGINAL / "val"
 TEST_DIR  = BASE_DIR_ORGINAL / "test"
-GEHLER_DATASETS_DIR = DATASETS_DIR  / "Gehler'sRawDataset"
+GEHLER_DATASETS_DIR = DATASETS_DIR  / "tameshi"
 # =======================================
 # サイズ設定
 # =======================================

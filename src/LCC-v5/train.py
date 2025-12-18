@@ -10,7 +10,7 @@ from HistogramDataset import HistogramDataset
 from ResNetModel import ResNetModel, angular_loss, train_one_epoch, evaluate
 from config import BASE_DIR, TRAIN_DIR, VAL_DIR, TEST_DIR, REAL_RGB_JSON_PATH, EPOCHS, OUTPUT_DIR, BATCH_SIZE, LEARNING_RATE, WEIGHT, SEED, ERASE_PROB, ERASE_SIZE, DEVICE, set_seed, START_EPOCH_2, START_EPOCH_3
 import pandas as pd
-TH = 0.1  # 角度差の閾値（degree）
+TH = 0.05  # 角度差の閾値（degree）
 
 def is_better(curr, best):
     # curr, best は dict
@@ -190,7 +190,7 @@ def main():
             
             # 検証損失が最小を更新した場合のみモデルを保存
             # ファイル名を 'best_resnet_model.pth' にして、最終保存と区別
-            torch.save(model.state_dict(), OUTPUT_DIR / f'model1.pth')
+            torch.save(model.state_dict(), OUTPUT_DIR / f'model_test.pth')
             logging.info(f"new model saved")
 
         # 平均と中央値の計算を追加

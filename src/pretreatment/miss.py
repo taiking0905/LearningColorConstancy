@@ -26,40 +26,28 @@
 
 import os
 import glob
-import shutil
 
 from config import setup_directories
-from CreateHistogram import CreateHistogram, CreateHistogram_rg_gb
-from MaskProcessing import MaskProcessing
-from AnalayzeWhite import analyze_white_patch
+from CreateHistogram import CreateHistogram  # 一般ヒストグラム用
+from CreateHistogram_rg_gb import CreateHistogram_rg_gb  # RG/GBヒストグラム用
 
-       
 def pretreatment():
     # ディレクトリ設定
     dirs = setup_directories()
 
-    # png画像のパスを取得
-    image_paths = sorted(glob.glob(os.path.join(dirs["END"], "*.png")))
+    # MASKディレクトリ内のマスク画像を取得
+    masked_paths = sorted(glob.glob(os.path.join(dirs["MASK"], "*_masked.png")))
 
-    
-    for image_path in image_paths:
+    for masked_path in masked_paths:
         try:
-            # 画像ファイル名から拡張子を除去して、マスクと教師データのパスを設定
-            filename = os.path.splitext(os.path.basename(image_path))[0]
-            # マスク処理した画像の名前を設定
-            image_masked_path = os.path.join(dirs["MASK"], f"{filename}_masked.png")
 
-            # 教師データの画像の名前を設定
-            # image_corrected_path = os.path.join(dirs["TEACHER"], f"{filename}_corrected.png")
-            # データ作成 エラーが出るなら止める
-    
-            # image_masked_path(マスク処理された画像)を使い,ヒストグラム(CSV)を作成,histpreディレクトリに保存
-            CreateHistogram(image_masked_path, dirs["HIST"])
-            CreateHistogram_rg_gb(image_masked_path, dirs["HIST_RG_GB"])
+            # ヒストグラム作成
+            # CreateHistogram(masked_path, dirs["HIST"])          # 一般ヒストグラム
+            CreateHistogram_rg_gb(masked_path, dirs["HIST_RG_GB"])  # RG/GBヒストグラム
 
         except Exception as e:
-            print(f"処理中にエラーが発生しました: {e}")
+            print(f"処理中にエラーが発生しました: {masked_path} → {e}")
 
-# 実行
 if __name__ == "__main__":
     pretreatment()
+

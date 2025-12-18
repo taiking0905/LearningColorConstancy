@@ -66,47 +66,42 @@ def normalize_histogram(hist):
     ヒストグラムの最大値で割って0〜1にスケーリング。
     全要素が0の場合はそのまま返す。
     """
+    print(f"max value: {hist.max()}")
     if hist.max() > 0:
         return (hist / hist.max()).astype(np.float32)
     else:
         return hist.astype(np.float32)
 
-
-# =======================================
-# rgとgbヒストグラムを1枚の画像として合成
-# =======================================
-def combine_rg_gb_histograms(presence_rg, presence_gb):
+def combine_rg_gb_histograms(presence_rg, presence_gb, size=224):
     """
     rgとgbのヒストグラム画像を組み合わせて224x224の画像を作成する。
-
-    - 上三角領域（x+y <= size）はrgを配置
-    - 下三角領域はgb（回転して整列）を配置
+    学習用はfloat32のまま、可視化用はuint8で出力。
     """
-    UINT8_MAX = 255  # 8bit画像の最大値
 
     # ヒストグラムをリサイズ
-    # INTER_LINEARよりもINTER_NEARESTのほうがいいかも。検討場所
-    rg_upsampled = cv2.resize(presence_rg, (size, size), interpolation=cv2.INTER_LINEAR)
-    gb_upsampled = cv2.resize(presence_gb, (size, size), interpolation=cv2.INTER_LINEAR)
+    rg_upsampled = cv2.resize(presence_rg, (size, size), interpolation=cv2.INTER_NEAREST)
+    gb_upsampled = cv2.resize(presence_gb, (size, size), interpolation=cv2.INTER_NEAREST)
 
-    # 0〜255へスケーリング
-    rg_8bit = (rg_upsampled * UINT8_MAX).astype(np.uint8)
-    gb_rotated = np.rot90((gb_upsampled * UINT8_MAX).astype(np.uint8), 2)  # 180°回転
+    # 下三角領域用に180°回転
+    gb_rotated = np.rot90(gb_upsampled, 2)
 
-    # 結合用配列を作成
-    combined = np.zeros((size, size), dtype=np.float32)
+    # 結合用配列を作成（float32）
+    combined_float = np.zeros((size, size), dtype=np.float32)
 
-    # 対角線を境にrgとgbを配置
     for y in range(size):
         for x in range(size):
             if x + y <= size:
-                combined[y, x] = rg_8bit[y, x]
+                combined_float[y, x] = rg_upsampled[y, x]
             else:
-                combined[y, x] = gb_rotated[y, x]
+                combined_float[y, x] = gb_rotated[y, x]
 
-    # CNN入力想定: チャンネル次元を追加 (1ch)
-    return combined, np.stack([combined], axis=0)
+    # 学習用: 1チャンネルスタック
+    combined_for_model = np.stack([combined_float], axis=0)  # shape: (1, H, W)
 
+    # 可視化用: 0～255に変換してuint8
+    combined_visual = (combined_float * 255).astype(np.uint8)
+
+    return combined_for_model, combined_visual
 
 # =======================================
 # 2Dヒストグラムを可視化・保存
@@ -161,42 +156,42 @@ def CreateHistogram_rg_gb(image_path, output_path):
     hist_rg_2d, hist_gb_2d = compute_2d_histograms(rgb_normalized, valid_mask)
 
     # 0〜1正規化（※要確認: hist_rgをhist_gbにしていた点はミスかも）
-    presence_rg = normalize_histogram(hist_gb_2d)
+    presence_rg = normalize_histogram(hist_rg_2d)
     presence_gb = normalize_histogram(hist_gb_2d)
 
     # rgとgbを結合した224x224画像を作成
-    combined, stacked = combine_rg_gb_histograms(presence_rg, presence_gb)
+    stacked, combined = combine_rg_gb_histograms(presence_rg, presence_gb)
 
     # Numpy形式で保存
     np.save(os.path.join(output_path, f"{filename}.npy"), stacked)
     print(f"Saved upsampled 224x224x2 histogram to: {filename}.npy")
 
-    # ==============================
-    # プロット（可視化）
-    # ==============================
-    fig1 = plot_2d_histogram(hist_rg_2d, "2D Hist (rg count)", 'r = R/(R+G+B)', 'g = G/(R+G+B)', filename)
-    fig2 = plot_2d_histogram(hist_gb_2d, "2D Hist (gb count)", 'g = G/(R+G+B)', 'b = B/(R+G+B)', filename)
-    fig3 = plot_2d_histogram(combined, "RG & GB Combined Histogram", '', '', filename, logscale=True)
+    # # ==============================
+    # # プロット（可視化）
+    # # ==============================
+    # fig1 = plot_2d_histogram(hist_rg_2d, "2D Hist (rg count)", 'r = R/(R+G+B)', 'g = G/(R+G+B)', filename)
+    # fig2 = plot_2d_histogram(hist_gb_2d, "2D Hist (gb count)", 'g = G/(R+G+B)', 'b = B/(R+G+B)', filename)
+    # fig3 = plot_2d_histogram(combined, "RG & GB Combined Histogram", '', '', filename, logscale=True)
 
-    # ==============================
-    # 複数ウィンドウの位置調整
-    # ==============================
-    move_figure(fig1, 0, 20)        # 左端
-    move_figure(fig2, 30, 20)       # 中央寄り
-    move_figure(fig3, 60, 20)       # 右端
+    # # ==============================
+    # # 複数ウィンドウの位置調整
+    # # ==============================
+    # move_figure(fig1, 0, 20)        # 左端
+    # move_figure(fig2, 30, 20)       # 中央寄り
+    # move_figure(fig3, 60, 20)       # 右端
 
-    # ==============================
-    # スペースキーで全ウィンドウを閉じる
-    # ==============================
-    def on_key(event):
-        if event.key == ' ':
-            for f in [fig1, fig2, fig3]:
-                plt.close(f)
+    # # ==============================
+    # # スペースキーで全ウィンドウを閉じる
+    # # ==============================
+    # def on_key(event):
+    #     if event.key == ' ':
+    #         for f in [fig1, fig2, fig3]:
+    #             plt.close(f)
 
-    for f in [fig1, fig2, fig3]:
-        f.canvas.mpl_connect("key_press_event", on_key)
+    # for f in [fig1, fig2, fig3]:
+    #     f.canvas.mpl_connect("key_press_event", on_key)
 
-    # ======================
-    # 表示ブロック（終了待ち）
-    # ======================
-    plt.show(block=True)
+    # # ======================
+    # # 表示ブロック（終了待ち）
+    # # ======================
+    # plt.show(block=True)
