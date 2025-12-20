@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from scipy.ndimage import gaussian_filter
 import cv2
 import numpy as np
 import os
@@ -61,47 +62,58 @@ def compute_2d_histograms(rgb_normalized, valid_mask):
 # =======================================
 # ヒストグラムを0〜1に正規化
 # =======================================
-def normalize_histogram(hist):
+def normalize_histogram_for_imagenet(hist):
     """
-    ヒストグラムの最大値で割って0〜1にスケーリング。
-    全要素が0の場合はそのまま返す。
+    ImageNet転移学習用:
+    - ヒストグラムを0〜1にスケーリング
+    - 微小値カット optional
     """
-    print(f"max value: {hist.max()}")
-    if hist.max() > 0:
-        return (hist / hist.max()).astype(np.float32)
-    else:
-        return hist.astype(np.float32)
+    hist = hist.astype(np.float32)
+    max_val = hist.max()
+    if max_val > 0:
+        hist /= max_val
+    return hist
 
-def combine_rg_gb_histograms(presence_rg, presence_gb, size=224):
+def combine_rg_gb_histograms(hist_rg, hist_gb, size=224, sigma=1.5):
     """
-    rgとgbのヒストグラム画像を組み合わせて224x224の画像を作成する。
-    学習用はfloat32のまま、可視化用はuint8で出力。
+    rgとgbの2Dヒストグラムを結合してCNN入力用画像と可視化用画像を作成
+    ImageNet転移学習対応
     """
+    # 1. リサイズ
+    rg_resized = cv2.resize(hist_rg.astype(np.float32), (size, size), interpolation=cv2.INTER_NEAREST)
+    gb_resized = cv2.resize(hist_gb.astype(np.float32), (size, size), interpolation=cv2.INTER_NEAREST)
 
-    # ヒストグラムをリサイズ
-    rg_upsampled = cv2.resize(presence_rg, (size, size), interpolation=cv2.INTER_NEAREST)
-    gb_upsampled = cv2.resize(presence_gb, (size, size), interpolation=cv2.INTER_NEAREST)
+    # 2. Gaussian 平滑化
+    rg_smooth = gaussian_filter(rg_resized, sigma=sigma)
+    gb_smooth = gaussian_filter(gb_resized, sigma=sigma)
 
-    # 下三角領域用に180°回転
-    gb_rotated = np.rot90(gb_upsampled, 2)
+    # 3. 下三角用に180°回転
+    gb_rotated = np.rot90(gb_smooth, 2)
 
-    # 結合用配列を作成（float32）
+    # 4. 上三角: rg / 下三角: gb を結合
     combined_float = np.zeros((size, size), dtype=np.float32)
-
     for y in range(size):
         for x in range(size):
             if x + y <= size:
-                combined_float[y, x] = rg_upsampled[y, x]
+                combined_float[y, x] = rg_smooth[y, x]
             else:
                 combined_float[y, x] = gb_rotated[y, x]
 
-    # 学習用: 1チャンネルスタック
-    combined_for_model = np.stack([combined_float], axis=0)  # shape: (1, H, W)
+    # 5. ノイズ除去（微小値カット）
+    low_threshold = combined_float.max() * 1e-4
+    combined_float[combined_float < low_threshold] = 0
 
-    # 可視化用: 0～255に変換してuint8
-    combined_visual = (combined_float * 255).astype(np.uint8)
+    # 6. 0〜1スケーリング（max正規化）
+    combined_norm = normalize_histogram_for_imagenet(combined_float)
+
+    # 7. CNN入力用: 1チャンネル float32
+    combined_for_model = np.expand_dims(combined_norm, axis=0)  # shape: (1, H, W)
+
+    # 8. 可視化用: 0~255スケール
+    combined_visual = np.clip(combined_norm * 255.0, 0, 255).astype(np.uint8)
 
     return combined_for_model, combined_visual
+
 
 # =======================================
 # 2Dヒストグラムを可視化・保存
@@ -155,12 +167,12 @@ def CreateHistogram_rg_gb(image_path, output_path):
     # ==============================
     hist_rg_2d, hist_gb_2d = compute_2d_histograms(rgb_normalized, valid_mask)
 
-    # 0〜1正規化（※要確認: hist_rgをhist_gbにしていた点はミスかも）
-    presence_rg = normalize_histogram(hist_rg_2d)
-    presence_gb = normalize_histogram(hist_gb_2d)
+    # # 0〜1正規化
+    # presence_rg = normalize_histogram(hist_rg_2d)
+    # presence_gb = normalize_histogram(hist_gb_2d)
 
     # rgとgbを結合した224x224画像を作成
-    stacked, combined = combine_rg_gb_histograms(presence_rg, presence_gb)
+    stacked, combined = combine_rg_gb_histograms(hist_rg_2d, hist_gb_2d)
 
     # Numpy形式で保存
     np.save(os.path.join(output_path, f"{filename}.npy"), stacked)
