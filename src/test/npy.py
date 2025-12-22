@@ -1,7 +1,7 @@
 import numpy as np
-data = np.load("C:/Users/taiki/Desktop/LCC-v5消さないように/test/8D5U5524_masked.npy")
+# data = np.load("C:/Users/taiki/Desktop/LCC-v5消さないように/test/8D5U5524_masked.npy")
 # data = np.load("E:/ColorConstancy/LCC-v5/train/8D5U5524_masked.npy")
-# data = np.load("E:/ColorConstancy/histogram_rg_gb/8D5U5524_masked.npy")
+data = np.load("E:/ColorConstancy/histogram_rg_gb/8D5U5524_masked.npy")
 data = np.squeeze(data)        # shape: (224,224)
 
 print("Shape:", data.shape)

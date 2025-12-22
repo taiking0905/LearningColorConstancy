@@ -81,7 +81,7 @@ def main():
 
     # 2. モデルロード
     model = ResNetModel().to(DEVICE)
-    model.load_state_dict(torch.load(OUTPUT_DIR / 'model1.pth'))
+    model.load_state_dict(torch.load(OUTPUT_DIR / 'model_test.pth'))
     model.eval()
 
     # 3. 評価
@@ -104,10 +104,10 @@ def main():
             loss = angular_loss(pred, y_true).item()
             cos_sim = 1 - loss
 
-            print(f"{i+1:2d}: "
-                f"Pred (r,g,b): ({pred[0,0]:.4f}, {pred[0,1]:.4f}, {pred[0,2]:.4f}) | "
-                f"True (r,g,b): ({y_true[0,0]:.4f}, {y_true[0,1]:.4f}, {y_true[0,2]:.4f}) | "
-                f"AngularLoss: {loss:.4f} | CosSim: {cos_sim:.4f}")
+            # print(f"{i+1:2d}: "
+            #     f"Pred (r,g,b): ({pred[0,0]:.4f}, {pred[0,1]:.4f}, {pred[0,2]:.4f}) | "
+            #     f"True (r,g,b): ({y_true[0,0]:.4f}, {y_true[0,1]:.4f}, {y_true[0,2]:.4f}) | "
+            #     f"AngularLoss: {loss:.4f} | CosSim: {cos_sim:.4f}")
 
 
 

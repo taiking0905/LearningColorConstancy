@@ -100,7 +100,7 @@ def combine_rg_gb_histograms(hist_rg, hist_gb, size=224, sigma=1.5):
                 combined_float[y, x] = gb_rotated[y, x]
 
     # 5. ノイズ除去（微小値カット）
-    low_threshold = combined_float.max() * 1e-4
+    low_threshold = combined_float.max() * 1e-5
     combined_float[combined_float < low_threshold] = 0
 
     # 6. 0〜1スケーリング（max正規化）
