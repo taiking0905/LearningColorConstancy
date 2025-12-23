@@ -81,7 +81,7 @@ def main():
 
     # 2. モデルロード
     model = ResNetModel().to(DEVICE)
-    model.load_state_dict(torch.load(OUTPUT_DIR / 'model_test.pth'))
+    model.load_state_dict(torch.load(OUTPUT_DIR / 'model1.pth'))
     model.eval()
 
     # 3. 評価

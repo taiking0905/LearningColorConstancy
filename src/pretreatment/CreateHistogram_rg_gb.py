@@ -74,7 +74,7 @@ def normalize_histogram_for_imagenet(hist):
         hist /= max_val
     return hist
 
-def combine_rg_gb_histograms(hist_rg, hist_gb, size=224, sigma=1.5):
+def combine_rg_gb_histograms(hist_rg, hist_gb, size=224, sigma=1.0):
     """
     rgとgbの2Dヒストグラムを結合してCNN入力用画像と可視化用画像を作成
     ImageNet転移学習対応
