@@ -39,22 +39,23 @@ OUTPUT_DIR = LCC_DIR / "outputs"
 # -------------------------------
 # ハイパーパラメータ
 # -------------------------------
-EPOCHS = 500
+EPOCHS = 100
 BATCH_SIZE = 16
-LEARNING_RATE =  1e-4
+LEARNING_RATE = 1e-6
 WEIGHT = 5e-5
-DROPOUT = 0.5
+DROPOUT = 0.2
 
 # -------------------------------
 # 設定パラメータ
 # -------------------------------
 SEED = 42
 OUTPUT_DIM = 3
-ERASE_PROB =0.5
-ERASE_SIZE = 60
+ERASE_PROB =0.3
+ERASE_SIZE = 30
+START_EPOCH_2 = 50
+START_EPOCH_3 = 100
 
-
-FREEZE_MODE = "fc_only"  
+FREEZE_MODE = "none"  
 # -------------------------------
 # none 全層学習
 # fc_only FCだけ学習

@@ -24,9 +24,12 @@ class HistogramDataset(torch.utils.data.Dataset):
         return x, y
 
     def random_erase(self, img):
-        x = self.rng.integers(0, 224 - self.erase_size)
-        y = self.rng.integers(0, 224 - self.erase_size)
-        img[y:y+self.erase_size, x:x+self.erase_size] = 0
+        max_size = self.erase_size
+        size = int(self.rng.uniform(max_size * 0.2, max_size))  # 20〜100%のランダム
+        x = self.rng.integers(0, 224 - size)
+        y = self.rng.integers(0, 224 - size)
+        img[y:y+size, x:x+size] = 0
         return img
+
 
 

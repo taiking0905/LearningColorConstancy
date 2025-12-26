@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from scipy.ndimage import gaussian_filter
 import cv2
 import numpy as np
 import os
@@ -61,51 +62,57 @@ def compute_2d_histograms(rgb_normalized, valid_mask):
 # =======================================
 # ヒストグラムを0〜1に正規化
 # =======================================
-def normalize_histogram(hist):
+def normalize_histogram_for_imagenet(hist):
     """
-    ヒストグラムの最大値で割って0〜1にスケーリング。
-    全要素が0の場合はそのまま返す。
+    ImageNet転移学習用:
+    - ヒストグラムを0〜1にスケーリング
+    - 微小値カット optional
     """
-    if hist.max() > 0:
-        return (hist / hist.max()).astype(np.float32)
-    else:
-        return hist.astype(np.float32)
+    hist = hist.astype(np.float32)
+    max_val = hist.max()
+    if max_val > 0:
+        hist /= max_val
+    return hist
 
-
-# =======================================
-# rgとgbヒストグラムを1枚の画像として合成
-# =======================================
-def combine_rg_gb_histograms(presence_rg, presence_gb):
+def combine_rg_gb_histograms(hist_rg, hist_gb, size=224, sigma=1.0):
     """
-    rgとgbのヒストグラム画像を組み合わせて224x224の画像を作成する。
-
-    - 上三角領域（x+y <= size）はrgを配置
-    - 下三角領域はgb（回転して整列）を配置
+    rgとgbの2Dヒストグラムを結合してCNN入力用画像と可視化用画像を作成
+    ImageNet転移学習対応
     """
-    UINT8_MAX = 255  # 8bit画像の最大値
+    # 1. リサイズ
+    rg_resized = cv2.resize(hist_rg.astype(np.float32), (size, size), interpolation=cv2.INTER_NEAREST)
+    gb_resized = cv2.resize(hist_gb.astype(np.float32), (size, size), interpolation=cv2.INTER_NEAREST)
 
-    # ヒストグラムをリサイズ
-    # INTER_LINEARよりもINTER_NEARESTのほうがいいかも。検討場所
-    rg_upsampled = cv2.resize(presence_rg, (size, size), interpolation=cv2.INTER_LINEAR)
-    gb_upsampled = cv2.resize(presence_gb, (size, size), interpolation=cv2.INTER_LINEAR)
+    # 2. Gaussian 平滑化
+    rg_smooth = gaussian_filter(rg_resized, sigma=sigma)
+    gb_smooth = gaussian_filter(gb_resized, sigma=sigma)
 
-    # 0〜255へスケーリング
-    rg_8bit = (rg_upsampled * UINT8_MAX).astype(np.uint8)
-    gb_rotated = np.rot90((gb_upsampled * UINT8_MAX).astype(np.uint8), 2)  # 180°回転
+    # 3. 下三角用に180°回転
+    gb_rotated = np.rot90(gb_smooth, 2)
 
-    # 結合用配列を作成
-    combined = np.zeros((size, size), dtype=np.float32)
-
-    # 対角線を境にrgとgbを配置
+    # 4. 上三角: rg / 下三角: gb を結合
+    combined_float = np.zeros((size, size), dtype=np.float32)
     for y in range(size):
         for x in range(size):
             if x + y <= size:
-                combined[y, x] = rg_8bit[y, x]
+                combined_float[y, x] = rg_smooth[y, x]
             else:
-                combined[y, x] = gb_rotated[y, x]
+                combined_float[y, x] = gb_rotated[y, x]
 
-    # CNN入力想定: チャンネル次元を追加 (1ch)
-    return combined, np.stack([combined], axis=0)
+    # 5. ノイズ除去（微小値カット）
+    low_threshold = combined_float.max() * 1e-5
+    combined_float[combined_float < low_threshold] = 0
+
+    # 6. 0〜1スケーリング（max正規化）
+    combined_norm = normalize_histogram_for_imagenet(combined_float)
+
+    # 7. CNN入力用: 1チャンネル float32
+    combined_for_model = np.expand_dims(combined_norm, axis=0)  # shape: (1, H, W)
+
+    # 8. 可視化用: 0~255スケール
+    combined_visual = np.clip(combined_norm * 255.0, 0, 255).astype(np.uint8)
+
+    return combined_for_model, combined_visual
 
 
 # =======================================
@@ -160,43 +167,43 @@ def CreateHistogram_rg_gb(image_path, output_path):
     # ==============================
     hist_rg_2d, hist_gb_2d = compute_2d_histograms(rgb_normalized, valid_mask)
 
-    # 0〜1正規化（※要確認: hist_rgをhist_gbにしていた点はミスかも）
-    presence_rg = normalize_histogram(hist_gb_2d)
-    presence_gb = normalize_histogram(hist_gb_2d)
+    # # 0〜1正規化
+    # presence_rg = normalize_histogram(hist_rg_2d)
+    # presence_gb = normalize_histogram(hist_gb_2d)
 
     # rgとgbを結合した224x224画像を作成
-    combined, stacked = combine_rg_gb_histograms(presence_rg, presence_gb)
+    stacked, combined = combine_rg_gb_histograms(hist_rg_2d, hist_gb_2d)
 
     # Numpy形式で保存
     np.save(os.path.join(output_path, f"{filename}.npy"), stacked)
     print(f"Saved upsampled 224x224x2 histogram to: {filename}.npy")
 
-    # ==============================
-    # プロット（可視化）
-    # ==============================
-    fig1 = plot_2d_histogram(hist_rg_2d, "2D Hist (rg count)", 'r = R/(R+G+B)', 'g = G/(R+G+B)', filename)
-    fig2 = plot_2d_histogram(hist_gb_2d, "2D Hist (gb count)", 'g = G/(R+G+B)', 'b = B/(R+G+B)', filename)
-    fig3 = plot_2d_histogram(combined, "RG & GB Combined Histogram", '', '', filename, logscale=True)
+    # # ==============================
+    # # プロット（可視化）
+    # # ==============================
+    # fig1 = plot_2d_histogram(hist_rg_2d, "2D Hist (rg count)", 'r = R/(R+G+B)', 'g = G/(R+G+B)', filename)
+    # fig2 = plot_2d_histogram(hist_gb_2d, "2D Hist (gb count)", 'g = G/(R+G+B)', 'b = B/(R+G+B)', filename)
+    # fig3 = plot_2d_histogram(combined, "RG & GB Combined Histogram", '', '', filename, logscale=True)
 
-    # ==============================
-    # 複数ウィンドウの位置調整
-    # ==============================
-    move_figure(fig1, 0, 20)        # 左端
-    move_figure(fig2, 30, 20)       # 中央寄り
-    move_figure(fig3, 60, 20)       # 右端
+    # # ==============================
+    # # 複数ウィンドウの位置調整
+    # # ==============================
+    # move_figure(fig1, 0, 20)        # 左端
+    # move_figure(fig2, 30, 20)       # 中央寄り
+    # move_figure(fig3, 60, 20)       # 右端
 
-    # ==============================
-    # スペースキーで全ウィンドウを閉じる
-    # ==============================
-    def on_key(event):
-        if event.key == ' ':
-            for f in [fig1, fig2, fig3]:
-                plt.close(f)
+    # # ==============================
+    # # スペースキーで全ウィンドウを閉じる
+    # # ==============================
+    # def on_key(event):
+    #     if event.key == ' ':
+    #         for f in [fig1, fig2, fig3]:
+    #             plt.close(f)
 
-    for f in [fig1, fig2, fig3]:
-        f.canvas.mpl_connect("key_press_event", on_key)
+    # for f in [fig1, fig2, fig3]:
+    #     f.canvas.mpl_connect("key_press_event", on_key)
 
-    # ======================
-    # 表示ブロック（終了待ち）
-    # ======================
-    plt.show(block=True)
+    # # ======================
+    # # 表示ブロック（終了待ち）
+    # # ======================
+    # plt.show(block=True)

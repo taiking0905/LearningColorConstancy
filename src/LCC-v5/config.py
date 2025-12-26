@@ -41,7 +41,7 @@ OUTPUT_DIR = LCC_DIR / "outputs"
 # -------------------------------
 EPOCHS = 1000
 BATCH_SIZE = 16
-LEARNING_RATE =  1e-4
+LEARNING_RATE =  5e-5
 WEIGHT = 5e-5
 DROPOUT = 0.2
 
