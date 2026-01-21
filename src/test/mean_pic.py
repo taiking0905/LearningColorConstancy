@@ -4,7 +4,7 @@ import cv2
 from collections import defaultdict
 
 # フォルダとファイル取得
-img_dir = r"E:\ColorConstancy\masking\iphone"
+img_dir = r"D:\ColorConstancy\masking\iphone"
 # img_dir = r"E:\ColorConstancy\masking\Gehler'sRawDataset"
 img_files = [f for f in os.listdir(img_dir) if f.lower().endswith('.png')]
 

@@ -75,12 +75,14 @@ def main():
     print("DEVICE:", DEVICE)
 
     # X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
-    X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
+    # X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
+    X_test, y_test_df = load_dataset(IPHONE_TEST_DIR, REAL_RGB_JSON_PATH)
     y_test = y_test_df[["R", "G" , "B"]].values
     val_dataset = HistogramDataset(X_test, y_test)
 
     # 2. モデルロード
     model = ResNetModel().to(DEVICE)
+    # model.load_state_dict(torch.load(OUTPUT_DIR / 'model1.pth', map_location=torch.device('cpu')))
     model.load_state_dict(torch.load(OUTPUT_DIR / 'model1.pth'))
     model.eval()
 
@@ -104,10 +106,10 @@ def main():
             loss = angular_loss(pred, y_true).item()
             cos_sim = 1 - loss
 
-            # print(f"{i+1:2d}: "
-            #     f"Pred (r,g,b): ({pred[0,0]:.4f}, {pred[0,1]:.4f}, {pred[0,2]:.4f}) | "
-            #     f"True (r,g,b): ({y_true[0,0]:.4f}, {y_true[0,1]:.4f}, {y_true[0,2]:.4f}) | "
-            #     f"AngularLoss: {loss:.4f} | CosSim: {cos_sim:.4f}")
+            print(f"{i+1:2d}: "
+                f"Pred (r,g,b): ({pred[0,0]:.4f}, {pred[0,1]:.4f}, {pred[0,2]:.4f}) | "
+                f"True (r,g,b): ({y_true[0,0]:.4f}, {y_true[0,1]:.4f}, {y_true[0,2]:.4f}) | "
+                f"AngularLoss: {loss:.4f} | CosSim: {cos_sim:.4f}")
 
 
 

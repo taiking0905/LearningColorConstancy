@@ -3,9 +3,9 @@ from matplotlib.patches import Rectangle
 
 # 例：条件ごとの要約統計（あなたの値に置き換えてください）
 data_stats = [
-    {'label':'Gehler (Orginal)', 'q1':0.33 , 'median':1.24 , 'q3':5.39 , 'mean':2.12, 'p95':7.14 , 'p99':12.19, 'max':16.52},
-    {'label':'Gehler (Reproduced)', 'q1':0.8890, 'median':1.8897, 'q3':4.6283, 'mean':2.3163, 'p95':6.1509, 'p99':9.0583, 'max':9.1319},
-    {'label':'iPhone RAW', 'q1':4.5362, 'median':7.5115, 'q3':16.6271, 'mean':9.0420, 'p95':18.2456, 'p99':18.9819, 'max':19.1659},
+    {'label':'A', 'q1':1.7986 , 'median':5.6770 , 'q3':10.0602 , 'mean':5.5028, 'p95':13.1573 , 'p99':13.1573, 'max':13.7675},
+    {'label':'B', 'q1':0.3316, 'median':1.1066, 'q3':4.8869, 'mean':1.9726, 'p95':5.8898, 'p99':9.5330, 'max':10.1975},
+    {'label':'C', 'q1':3.4857, 'median':5.9504, 'q3':11.9477, 'mean':6.7348, 'p95':13.5234, 'p99':14.2197, 'max':14.3375}
 ]
 
 fig, ax = plt.subplots(figsize=(8,5))
@@ -31,14 +31,13 @@ for i, s in enumerate(data_stats):
     # 上端の小横線
     ax.plot([x-0.08, x+0.08], [upper_whisker_final,  upper_whisker_final], color = 'black')
     # 平均プロット
-    ax.scatter(x, s['mean'], marker='D', s=50, edgecolor='black', color='orange', zorder=10, label='Mean' if i==0 else "")
+    ax.scatter(x, s['mean'], marker='D', s=50, edgecolor='black', color='orange', zorder=10)
 
-ax.axhline(5, color='blue', linestyle='--', linewidth=2, label='GrayWorld(5°)')
-ax.axhline(2, color='red', linestyle='--', linewidth=2, label='MachineLearning(2°)')
+ax.axhline(5, color='blue', linestyle='--', linewidth=2)
+ax.axhline(2, color='red', linestyle='--', linewidth=2)
 
 # 軸・ラベル
 ax.set_xticks([1,2,3])
-ax.set_xticklabels([s['label'] for s in data_stats])
 ax.set_ylabel('Value')
 ax.legend()
 plt.tight_layout()

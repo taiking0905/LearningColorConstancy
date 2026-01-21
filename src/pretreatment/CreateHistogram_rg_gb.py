@@ -178,32 +178,32 @@ def CreateHistogram_rg_gb(image_path, output_path):
     np.save(os.path.join(output_path, f"{filename}.npy"), stacked)
     print(f"Saved upsampled 224x224x2 histogram to: {filename}.npy")
 
-    # # ==============================
-    # # プロット（可視化）
-    # # ==============================
-    # fig1 = plot_2d_histogram(hist_rg_2d, "2D Hist (rg count)", 'r = R/(R+G+B)', 'g = G/(R+G+B)', filename)
-    # fig2 = plot_2d_histogram(hist_gb_2d, "2D Hist (gb count)", 'g = G/(R+G+B)', 'b = B/(R+G+B)', filename)
-    # fig3 = plot_2d_histogram(combined, "RG & GB Combined Histogram", '', '', filename, logscale=True)
+    # ==============================
+    # プロット（可視化）
+    # ==============================
+    fig1 = plot_2d_histogram(hist_rg_2d, "2D Hist (rg count)", 'r = R/(R+G+B)', 'g = G/(R+G+B)', filename)
+    fig2 = plot_2d_histogram(hist_gb_2d, "2D Hist (gb count)", 'g = G/(R+G+B)', 'b = B/(R+G+B)', filename)
+    fig3 = plot_2d_histogram(combined, "RG & GB Combined Histogram", '', '', filename, logscale=True)
 
-    # # ==============================
-    # # 複数ウィンドウの位置調整
-    # # ==============================
-    # move_figure(fig1, 0, 20)        # 左端
-    # move_figure(fig2, 30, 20)       # 中央寄り
-    # move_figure(fig3, 60, 20)       # 右端
+    # ==============================
+    # 複数ウィンドウの位置調整
+    # ==============================
+    move_figure(fig1, 0, 20)        # 左端
+    move_figure(fig2, 30, 20)       # 中央寄り
+    move_figure(fig3, 60, 20)       # 右端
 
-    # # ==============================
-    # # スペースキーで全ウィンドウを閉じる
-    # # ==============================
-    # def on_key(event):
-    #     if event.key == ' ':
-    #         for f in [fig1, fig2, fig3]:
-    #             plt.close(f)
+    # ==============================
+    # スペースキーで全ウィンドウを閉じる
+    # ==============================
+    def on_key(event):
+        if event.key == ' ':
+            for f in [fig1, fig2, fig3]:
+                plt.close(f)
 
-    # for f in [fig1, fig2, fig3]:
-    #     f.canvas.mpl_connect("key_press_event", on_key)
+    for f in [fig1, fig2, fig3]:
+        f.canvas.mpl_connect("key_press_event", on_key)
 
-    # # ======================
-    # # 表示ブロック（終了待ち）
-    # # ======================
-    # plt.show(block=True)
+    # ======================
+    # 表示ブロック（終了待ち）
+    # ======================
+    plt.show(block=True)

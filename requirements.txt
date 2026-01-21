@@ -1,13 +1,13 @@
 numpy
 matplotlib
 opencv-python
-pillow
 scipy
-pyqt5
+Tkinter
 rawpy
 pandas
 dotenv
-watchdog
 discord.py
 scikit-learn
 tensorboard
+torch
+torchvision
