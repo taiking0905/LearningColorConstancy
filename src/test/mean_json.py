@@ -2,7 +2,7 @@ import json
 import numpy as np
 
 # JSONファイル読み込み
-with open("E:/ColorConstancy/real_rgb.json", "r") as f:
+with open("D:/ColorConstancy/real_rgb.json", "r") as f:
     data = json.load(f)
 
 # デバイスごとのRGBリスト
