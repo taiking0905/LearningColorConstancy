@@ -39,10 +39,10 @@ OUTPUT_DIR = LCC_DIR / "outputs"
 # -------------------------------
 # ハイパーパラメータ
 # -------------------------------
-EPOCHS = 1000
+EPOCHS = 500
 BATCH_SIZE = 16
-LEARNING_RATE = 3e-4
-WEIGHT = 3e-3
+LEARNING_RATE = 1e-4
+WEIGHT = 4e-3
 
 # -------------------------------
 # デバイス設定

@@ -6,7 +6,7 @@ from scipy.stats import trim_mean
 
 from load_dataset import load_dataset
 from MLPModel import MLPModel, euclidean_loss, evaluate
-from config import TEST_DIR, REAL_RGB_JSON_PATH, OUTPUT_DIR, DEVICE, SEED, set_seed
+from config import TEST_DIR, VAL_DIR, REAL_RGB_JSON_PATH, OUTPUT_DIR, DEVICE, SEED, set_seed
 
 def compute_angular_errors(y_pred_all, y_true_all):
     y_pred_norm = y_pred_all / np.linalg.norm(y_pred_all, axis=1, keepdims=True)
@@ -125,7 +125,7 @@ def main():
     print(f"Method\t\tValue")
     print(f"Mean\t\t{np.mean(angular_errors):.4f}")
     print(f"Median\t\t{np.median(angular_errors):.4f}")
-    print(f"Tri-m.\t\t{tri_mean(angular_errors, 0.25):.4f}")
+    print(f"Tri-m.\t\t{tri_mean(angular_errors, 0.1):.4f}")
     print(f"B-25\t\t{best_25_percent(angular_errors, 0.25):.4f}")
     print(f"W-25\t\t{worst_25_percent(angular_errors, 0.25):.4f}")
     print(f"95-P\t\t{np.percentile(angular_errors, 95):.4f}")

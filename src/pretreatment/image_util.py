@@ -39,7 +39,7 @@ def normalize_image(img):
     valid_mask = (np.any(img > 0, axis=2)) & (sum_rgb[:, :, 0] > 1e-6)
     return rgb_ratio, rgb_normalized, valid_mask
 
-def to_8bit_gamma(img, gamma=3):
+def to_8bit_gamma(img, gamma=2.2):
     """
     12bitまたは16bit画像を8bitに変換して、ガンマ補正も適用（表示用）
     """

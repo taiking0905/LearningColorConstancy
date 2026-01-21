@@ -27,24 +27,19 @@ def get_base_dir():
         if not drive:
             raise RuntimeError("ドライブが見つかりません")
         _base_dir_original = Path(drive) / "ColorConstancy/LCC-v5"
+        # _base_dir_original = Path(drive) / "ColorConstancy/LCC-v0"
         _base_dir_mine = Path(drive) / "ColorConstancy/TransferDataset"
     return _base_dir_original, _base_dir_mine 
 
 BASE_DIR_ORGINAL, BASE_DIR_MINE = get_base_dir()
 LCC_DIR = Path(__file__).resolve().parent
 DATASETS_DIR = (BASE_DIR_ORGINAL / "..") / "histogram_rg_gb/"
-
-
+# DATASETS_DIR = (BASE_DIR_ORGINAL / "..") / "histogram/"
 
 # -------------------------------
 # 設定パラメータ
 # -------------------------------
 SEED = 42
-OUTPUT_DIM = 3
-ERASE_PROB =0.6
-ERASE_SIZE = 30
-
-
 
 # -------------------------------
 # デバイス設定

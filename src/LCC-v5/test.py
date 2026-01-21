@@ -74,8 +74,8 @@ def main():
     print("Base dir:", base_dir)
     print("DEVICE:", DEVICE)
 
-    # X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
-    X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
+    X_test, y_test_df = load_dataset(TEST_DIR, REAL_RGB_JSON_PATH)
+    # X_test, y_test_df = load_dataset(VAL_DIR, REAL_RGB_JSON_PATH)
     y_test = y_test_df[["R", "G" , "B"]].values
     val_dataset = HistogramDataset(X_test, y_test)
 
@@ -130,7 +130,7 @@ def main():
     print(f"Method\t\tValue")
     print(f"Mean\t\t{np.mean(angular_errors):.4f}")
     print(f"Median\t\t{np.median(angular_errors):.4f}")
-    print(f"Tri-m.\t\t{tri_mean(angular_errors, 0.25):.4f}")
+    print(f"Tri-m.\t\t{tri_mean(angular_errors, 0.1):.4f}")
     print(f"B-25\t\t{best_25_percent(angular_errors, 0.25):.4f}")
     print(f"W-25\t\t{worst_25_percent(angular_errors, 0.25):.4f}")
     print(f"95-P\t\t{np.percentile(angular_errors, 95):.4f}")

@@ -57,12 +57,53 @@ def to_8bit_gamma(img, gamma=2.2):
 
 def almost_raw_from_rawpy(dng_path):
     with rawpy.imread(dng_path) as raw:
-        # 1. CFAデータ取得（まだデモザイクなし）
         raw_image = raw.raw_image.astype(np.float32)
 
         # 2. ブラックレベル補正
         raw_image -= BLACK_LEVEL
         raw_image = np.clip(raw_image, 0, WHITE_LEVEL - BLACK_LEVEL)
+        
+        # -------------------------------
+        # 2. RGGB擬似RGB化
+        # -------------------------------
+        pattern = raw.raw_pattern  # 0:R, 1:G, 2:B, 3:G
+        h, w = raw_image.shape
+        pseudo_rgb = np.zeros((h, w, 3), dtype=np.float32)
+
+        for y in range(h):
+            for x in range(w):
+                c = pattern[y % 2, x % 2]
+                if c == 0:          # R
+                    pseudo_rgb[y, x, 0] = raw_image[y, x]
+                elif c == 1 or c == 3:  # G
+                    pseudo_rgb[y, x, 1] = raw_image[y, x]
+                elif c == 2:        # B
+                    pseudo_rgb[y, x, 2] = raw_image[y, x]
+
+        # -------------------------------
+        # 3. 各チャンネル正規化（0~1）
+        # -------------------------------
+        for c in range(3):
+            ch_max = np.max(pseudo_rgb[..., c])
+            if ch_max > 0:
+                pseudo_rgb[..., c] /= ch_max
+
+        # -------------------------------
+        # 4. ガンマ補正
+        # -------------------------------
+        gamma = 2.2
+        pseudo_rgb = np.power(pseudo_rgb, 1 / gamma)
+
+        # 8bit化
+        pseudo_rgb_8bit = np.clip(pseudo_rgb * 255, 0, 255).astype(np.uint8)
+
+        # -------------------------------
+        # 5. 保存
+        # -------------------------------
+        pseudo_rgb_large = cv2.resize(pseudo_rgb_8bit, (w*12, h*12), interpolation=cv2.INTER_NEAREST)
+        filename = os.path.splitext(os.path.basename(dng_path))[0] + "_bayer.png"
+        save_path = os.path.join(OneDrive_RAW_PNG_PATH, filename)
+        cv2.imwrite(save_path, cv2.cvtColor(pseudo_rgb_large, cv2.COLOR_RGB2BGR))
 
         # 3. CFAをR/G/G/Bに分割
         # RGGBパターンを仮定
