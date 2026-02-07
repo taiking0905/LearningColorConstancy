@@ -109,10 +109,7 @@ def combine_rg_gb_histograms(hist_rg, hist_gb, size=224, sigma=1.0):
     # 7. CNN入力用: 1チャンネル float32
     combined_for_model = np.expand_dims(combined_norm, axis=0)  # shape: (1, H, W)
 
-    # 8. 可視化用: 0~255スケール
-    combined_visual = np.clip(combined_norm * 255.0, 0, 255).astype(np.uint8)
-
-    return combined_for_model, combined_visual
+    return combined_for_model
 
 
 # =======================================
@@ -127,7 +124,7 @@ def plot_2d_histogram(hist, title, xlabel, ylabel, filename, cmap='viridis', log
     ax = fig.add_subplot(1,1,1)
 
     # 対数スケール指定
-    norm = LogNorm(vmin=1, vmax=255) if logscale else None
+    norm = LogNorm(vmin=1e-5, vmax=1.0) if logscale else None
 
     # imshowでヒートマップ描画
     im = ax.imshow(hist.T, origin='lower', cmap=cmap,
@@ -168,11 +165,11 @@ def CreateHistogram_rg_gb(image_path, output_path):
     hist_rg_2d, hist_gb_2d = compute_2d_histograms(rgb_normalized, valid_mask)
 
     # # 0〜1正規化
-    # presence_rg = normalize_histogram(hist_rg_2d)
-    # presence_gb = normalize_histogram(hist_gb_2d)
+    presence_rg = normalize_histogram_for_imagenet(hist_rg_2d)
+    presence_gb = normalize_histogram_for_imagenet(hist_gb_2d)
 
     # rgとgbを結合した224x224画像を作成
-    stacked, combined = combine_rg_gb_histograms(hist_rg_2d, hist_gb_2d)
+    stacked = combine_rg_gb_histograms(hist_rg_2d, hist_gb_2d)
 
     # Numpy形式で保存
     np.save(os.path.join(output_path, f"{filename}.npy"), stacked)
@@ -181,9 +178,9 @@ def CreateHistogram_rg_gb(image_path, output_path):
     # ==============================
     # プロット（可視化）
     # ==============================
-    fig1 = plot_2d_histogram(hist_rg_2d, "2D Hist (rg count)", 'r = R/(R+G+B)', 'g = G/(R+G+B)', filename)
-    fig2 = plot_2d_histogram(hist_gb_2d, "2D Hist (gb count)", 'g = G/(R+G+B)', 'b = B/(R+G+B)', filename)
-    fig3 = plot_2d_histogram(combined, "RG & GB Combined Histogram", '', '', filename, logscale=True)
+    fig1 = plot_2d_histogram(presence_rg, "2D Hist (rg count)", 'r = R/(R+G+B)', 'g = G/(R+G+B)', filename, logscale=True)
+    fig2 = plot_2d_histogram(presence_gb, "2D Hist (gb count)", 'g = G/(R+G+B)', 'b = B/(R+G+B)', filename, logscale=True)
+    fig3 = plot_2d_histogram(stacked, "RG & GB Combined Histogram", '', '', filename, logscale=True)
 
     # ==============================
     # 複数ウィンドウの位置調整

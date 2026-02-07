@@ -47,7 +47,7 @@ def main(png_path: Path):
     # 転移前
     # illumination = np.array([0.2250, 0.4536, 0.3213], dtype=np.float32)
     # 転移後
-    # illumination = np.array([0.2450, 0.5164, 0.2387], dtype=np.float32)
+    # illumination = np.array([0.2353, 0.4684, 0.2962], dtype=np.float32)
     # 正解
     illumination = np.array([0.2505, 0.5284, 0.2211], dtype=np.float32)
 
