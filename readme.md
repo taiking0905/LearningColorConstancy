@@ -45,11 +45,41 @@ iPhone画像ではスペクトル感度差により精度低下が確認され�
 転移学習により改善は見られたが、
 完全な吸収にはモデル構造の拡張が必要である可能性がある。
 
-# LearningColorConstancy_exhibit
-# src
-## LCC-v0
-## LLC-v5
-## OneDriveServer
-## Pretreatment
-##
-# requirements.txt
+## ディレクトリ構造
+### 開発環境
+``` bash
+LearningColorConstancy/
+│
+├── LearningColorConstancy_exhibit/   # 研究展示用Webサイト（GitHub Pages）
+│
+├── src/                              # 研究コード
+│   ├── LCC-v0/                       # 1997年の先行研究実装
+│   ├── LCC-v5/                       # 2023年 Buzzelli et al. 実装
+│   ├── Transfer/                     # iPhone画像への転移学習コード
+│   ├── Pretreatment/                 # 前処理（マスク処理・ヒストグラム作成）
+│   ├── OneDriveServer/               # RAW画像遠隔変換用サーバー
+│   └── Test/                         # 発表用画像生成・分析用コード
+│
+└── requirements.txt                  # 使用ライブラリ一覧
+```
+### データセット（外部USB）
+
+⚠ データセットは外部USBに保存されている
+（ドライブは D: または E: のどちらかになるため注意）
+
+```　bash
+D:/ColorConstancy/
+│
+├── datasets/               # 前処理前のRAW画像
+├── masking/                # マスク処理のみ適用
+├── enddatasets/            # 前処理完了画像
+│
+├── histogram/              # LCC-v0用ヒストグラム
+├── histogram_rg_gb/        # LCC-v5用ヒストグラム
+│
+├── LCC-v0/                 # 学習可能形式のLCC-v0データ
+├── LCC-v5/                 # 学習可能形式のLCC-v5データ
+├── TransferDataset/        # iPhone転移学習用データ
+│
+└── colorchecker/           # 切り出したカラーチェッカー情報
+```
