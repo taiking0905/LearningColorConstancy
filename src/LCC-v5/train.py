@@ -188,7 +188,7 @@ def main():
             
             # 検証損失が最小を更新した場合のみモデルを保存
             # ファイル名を 'resnet18_model.pth' にして、最終保存と区別
-            torch.save(model.state_dict(), OUTPUT_DIR / f'resnet18-model.pth')
+            torch.save(model.state_dict(), OUTPUT_DIR / f'resnet18_model.pth')
             logging.info(f"new model saved")
 
         # 平均と中央値の計算を追加

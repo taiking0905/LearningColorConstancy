@@ -1,3 +1,5 @@
+# ミスったデータを直すのに使った
+
 # import os
 # import glob
 

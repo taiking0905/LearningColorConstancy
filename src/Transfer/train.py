@@ -79,10 +79,9 @@ def main():
     # 5. モデル定義
     model = ResNetModel().to(DEVICE)
     print(model)
-    model.load_state_dict(torch.load(OUTPUT_DIR / 'model1.pth'))
+    model.load_state_dict(torch.load(OUTPUT_DIR / 'resnet-18_model.pth'))
 
     freeze_layerstrainable_params = freeze_layers(model, FREEZE_MODE)
-    logging.info("Loaded best_model_phase1.pth for Phase 2 starting.")
 
     dummy_input = torch.randn(1, 1, 224, 224).to(DEVICE)
     writer.add_graph(model, dummy_input)
@@ -194,7 +193,7 @@ def main():
             
             # 検証損失が最小を更新した場合のみモデルを保存
             # ファイル名を 'best_resnet_model.pth' にして、最終保存と区別
-            torch.save(model.state_dict(), OUTPUT_DIR / f'model_test.pth')
+            torch.save(model.state_dict(), OUTPUT_DIR / f'transfer_model.pth')
             logging.info(f"new model saved")
 
         # 平均と中央値の計算を追加

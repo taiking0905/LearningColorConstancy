@@ -43,7 +43,7 @@ ColorConstancy
 ## Input / Output
 
 Input:
-- RGB画像（前処理済み）
+- rg histogram データとgb histogram データを一つにした画像
 
 Output:
 - 推定照明色 (R, G, B)
