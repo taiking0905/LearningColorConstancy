@@ -1,70 +1,138 @@
 import json
 import numpy as np
+import matplotlib.pyplot as plt
+from collections import defaultdict
 
-# JSONファイル読み込み
-with open("D:/ColorConstancy/real_rgb.json", "r") as f:
-    data = json.load(f)
 
-# デバイスごとのRGBリスト
-devices = {
-    "8D": {"R": [], "G": [], "B": []},
-    "IMG_0": {"R": [], "G": [], "B": []},
-    "IMG_4": {"R": [], "G": [], "B": []},
+# =============================
+# 設定
+# =============================
+JSON_PATH = "E:/ColorConstancy/real_rgb.json"
+
+DEVICE_PREFIXES = {
+    "8D": "8D",
+    "IMG_0": "IMG_0",
+    "IMG_4": "IMG_4",
 }
 
-# デバイス分類と集計
-for entry in data:
-    filename = entry["filename"]
-    rgb = entry["real_rgb"]
-    
-    if filename.startswith("8D"):
-        dev = "8D"
-    elif filename.startswith("IMG_0"):
-        dev = "IMG_0"
-    elif filename.startswith("IMG_4"):
-        dev = "IMG_4"
-    else:
-        continue
+COLORS = {
+    "8D": "red",
+    "IMG_0": "blue",
+    "IMG_4": "green",
+}
 
-    # 正規化（明るさで割る）
-    total = sum(rgb)
-    if total == 0:
-        norm_rgb = [0, 0, 0]
-    else:
-        norm_rgb = [c / total for c in rgb]
 
-    devices[dev]["R"].append(norm_rgb[0])
-    devices[dev]["G"].append(norm_rgb[1])
-    devices[dev]["B"].append(norm_rgb[2])
+# =============================
+# データ読み込み
+# =============================
+def load_json(path):
+    with open(path, "r") as f:
+        return json.load(f)
 
-# 平均・分散・CV計算関数（丸めなし）
-def stats_rgb(arr_r, arr_g, arr_b):
-    R_arr = np.array(arr_r)
-    G_arr = np.array(arr_g)
-    B_arr = np.array(arr_b)
-    
-    # 平均
-    R_avg, G_avg, B_avg = R_arr.mean(), G_arr.mean(), B_arr.mean()
-    
-    # 分散
-    R_var, G_var, B_var = R_arr.var(), G_arr.var(), B_arr.var()
-    
-    # CV（標準偏差 / 平均）
-    R_cv = np.sqrt(R_var) / R_avg if R_avg != 0 else 0
-    G_cv = np.sqrt(G_var) / G_avg if G_avg != 0 else 0
-    B_cv = np.sqrt(B_var) / B_avg if B_avg != 0 else 0
-    
-    return (R_avg, G_avg, B_avg), (R_var, G_var, B_var), (R_cv, G_cv, B_cv)
 
-# 出力
-for dev, vals in devices.items():
-    if len(vals["R"]) == 0:
-        print(f"{dev}: データなし\n")
-        continue
-    
-    avg_rgb, var_rgb, cv_rgb = stats_rgb(vals["R"], vals["G"], vals["B"])
-    
-    print(f"{dev} 枚数: {len(vals['R'])}")
-    print(f"平均RGB比率: r={avg_rgb[0]}, g={avg_rgb[1]}, b={avg_rgb[2]}")
-    print(f"分散: r={var_rgb[0]}, g={var_rgb[1]}, b={var_rgb[2]}")
-    print(f"CV: r={cv_rgb[0]}, g={cv_rgb[1]}, b={cv_rgb[2]}\n")
+# =============================
+# デバイス判定
+# =============================
+def detect_device(filename):
+    for prefix, dev in DEVICE_PREFIXES.items():
+        if filename.startswith(prefix):
+            return dev
+    return None
+
+
+# =============================
+# RGB集計
+# =============================
+def collect_rgb(data):
+    devices = defaultdict(lambda: {"R": [], "G": [], "B": []})
+
+    for entry in data:
+        dev = detect_device(entry["filename"])
+        if dev is None:
+            continue
+
+        rgb = entry["real_rgb"]
+        total = sum(rgb)
+        if total == 0:
+            continue
+
+        r, g, b = [c / total for c in rgb]
+
+        devices[dev]["R"].append(r)
+        devices[dev]["G"].append(g)
+        devices[dev]["B"].append(b)
+
+    return devices
+
+
+# =============================
+# 3Dプロット
+# =============================
+def plot_3d(devices):
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111, projection="3d")
+
+    for dev, vals in devices.items():
+        ax.scatter(
+            vals["R"],
+            vals["G"],
+            vals["B"],
+            label=dev,
+            alpha=0.6,
+            s=10,
+            color=COLORS.get(dev, "black"),
+        )
+
+    ax.set_xlabel("R ratio")
+    ax.set_ylabel("G ratio")
+    ax.set_zlabel("B ratio")
+    ax.legend()
+    ax.set_title("Device RGB Ratio Distribution")
+    plt.show()
+
+
+# =============================
+# G基準プロット
+# =============================
+def plot_g_normalized(devices):
+    plt.figure(figsize=(7, 7))
+    eps = 1e-8
+
+    for dev, vals in devices.items():
+        R = np.array(vals["R"])
+        G = np.array(vals["G"])
+        B = np.array(vals["B"])
+
+        Rg = R / (G + eps)
+        Bg = B / (G + eps)
+
+        plt.scatter(
+            Rg,
+            Bg,
+            label=dev,
+            alpha=0.6,
+            s=10,
+            color=COLORS.get(dev, "black"),
+        )
+
+    plt.xlabel("R / G")
+    plt.ylabel("B / G")
+    plt.title("Device Distribution (G normalized)")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+# =============================
+# main
+# =============================
+def main():
+    data = load_json(JSON_PATH)
+    devices = collect_rgb(data)
+
+    plot_3d(devices)
+    plot_g_normalized(devices)
+
+
+if __name__ == "__main__":
+    main()

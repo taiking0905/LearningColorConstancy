@@ -66,15 +66,48 @@ def main():
     model.eval()
 
     gradcam = GradCAM(model)
-
     cam = gradcam.generate(x)
 
-    # ===== 可視化 =====
-    plt.imshow(cam)
+    # ===== 元npy =====
+    input_map = X_test[0]
+    if input_map.ndim == 3:
+        input_map = input_map.mean(axis=0)
+
+    # ===== 特徴マップ =====
+    fmap = gradcam.features[0]
+    avg_map = fmap.mean(dim=0)  # 7x7
+
+    vals = avg_map.flatten()
+
+    # 負値を消す
+    vals = vals - vals.min()
+
+    # 割合に変換（総和1）
+    ratio = vals / (vals.sum() + 1e-8)
+    ratio_map = ratio.view(7, 7)
+
+    ratio_np = ratio_map.cpu().detach().numpy()
+
+    # ===== 3枚同時表示 =====
+    plt.figure(figsize=(15,4))
+
+    plt.subplot(1,3,1)
+    plt.imshow(input_map.T, origin="lower")
+    plt.title("Input (npy)")
+    plt.colorbar()
+
+    plt.subplot(1,3,2)
+    plt.imshow(ratio_np.T, origin="lower")
+    plt.title("7x7 Feature")
+    plt.colorbar()
+
+    plt.subplot(1,3,3)
+    plt.imshow(cam.T, origin="lower")
     plt.title("Grad-CAM")
     plt.colorbar()
-    plt.show()
 
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     main()
