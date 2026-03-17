@@ -33,6 +33,6 @@ def png_to_jpeg(png_path, jpeg_path=None, quality=95):
     return jpeg_path
 
 # 使用例
-png_file = r"C:\Users\taiki\OneDrive_SuwaTokyoUniversityOfScience\LearningColorConstancy_IPhone\LearningColorConstancy_rawpng\IMG_4027.png"
-jpeg_file = r"E:\IMG_4027.jpeg"
+png_file = r"C:\Users\taiki\OneDrive_SuwaTokyoUniversityOfScience\LearningColorConstancy_IPhone\rawpng\inside\IMG_4128.png"
+jpeg_file = r"E:\IMG_4128.jpeg"
 png_to_jpeg(png_file, jpeg_file, quality=95)

@@ -83,3 +83,27 @@ D:/ColorConstancy/
 │
 └── colorchecker/           # 切り出したカラーチェッカー情報
 ```
+
+## インストール
+
+インストール手順はこちらを参照してください。
+
+[インストール　ガイド](docs/install.md)
+
+## コード説明
+どんなコードかを説明しているmd
+
+[LCC-v0](src/LCC-v0/LCC-v0.md)  
+[LCC-v5](src/LCC-v5/LCC-v5.md)  
+[OneDriveServer](src/OneDriveServer/OneDriveServer.md)  
+[pretrement](src/pretreatment/Pretreatment.md)  
+[split_dataset](src/split_dataset/Split_dataset.md)     
+[Test](src/Test/Test.md)    
+[transfer](src/transfer/Transfer.md)    
+
+## そのほか説明
+全体設定    
+[cinfig](docs/config.md)
+
+iPhone設定  
+[iPhone](docs/iPhone.md)    
